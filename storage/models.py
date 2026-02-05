@@ -2,9 +2,13 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
+def user_file_path(instance, filename):
+    return f"user-{instance.owner.id}-files/{filename}"
+
+
 class StoredFile(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='files')
-    file = models.FileField(upload_to='uploads/%Y/%m/%d/')
+    file = models.FileField(upload_to=user_file_path)
     original_name = models.CharField(max_length=255)
     size = models.PositiveBigIntegerField()
     mime_type = models.CharField(max_length=100, blank=True)

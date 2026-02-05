@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои файлы{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+  <h2 class="text-2xl font-bold">Мои файлы</h2>
+  <a href="{% url 'upload_file' %}" class="bg-black text-gold px-4 py-2 rounded-lg hover:bg-gray-900 flex items-center gap-1">
+    <i data-lucide="upload"></i> Загрузить
+  </a>
+</div>
+
+{% if files %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for file in files %}
+      <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-medium truncate max-w-xs">{{ file.original_name }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ file.size|filesizeformat }}</p>
+          </div>
+          <div class="flex gap-2">
+            <a href="{% url 'download_file' file.pk %}" class="text-gray-500 hover:text-gold" title="Скачать">
+              <i data-lucide="download"></i>
+            </a>
+            <form method="post" action="{% url 'delete_file' file.pk %}" class="inline" onsubmit="return confirm('Удалить файл?')">
+              {% csrf_token %}
+              <button type="submit" class="text-gray-500 hover:text-red-500" title="Удалить">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="mt-3 text-xs text-gray-400">
+          {{ file.uploaded_at|date:"d.m.Y H:i" }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center py-12 text-gray-500">
+    <i data-lucide="folder-open" class="w-12 h-12 mx-auto text-gray-300"></i>
+    <p class="mt-4">Нет файлов. Загрузите первый!</p>
+  </div>
+{% endif %}
+{% endblock %}
