@@ -4,7 +4,7 @@ from django.contrib import messages
 from .forms import CustomAuthenticationForm, CustomUserCreationForm
 
 
-def signup(request):
+def signup_view(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -20,7 +20,7 @@ def signup(request):
     return render(request, 'accounts/signup.html', {'form': form})
 
 
-def login(request):
+def login_view(request):
     if request.method == 'POST':
         form = CustomAuthenticationForm(request, data=request.POST)
         if form.is_valid():
