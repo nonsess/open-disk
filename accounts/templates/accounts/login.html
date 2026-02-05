@@ -5,9 +5,7 @@
 {% block content %}
 <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200">
   <div class="text-center mb-6">
-    <i data-lucide="log-in" class="w-12 h-12 text-gold mx-auto"></i>
     <h2 class="text-2xl font-bold mt-4">Войти</h2>
-    <p class="text-gray-600 mt-2">Введите имя пользователя и пароль</p>
   </div>
 
   {% if form.non_field_errors %}
@@ -36,7 +34,6 @@
     </div>
 
     <button type="submit" class="w-full bg-black text-gold py-2 px-4 rounded-lg font-medium hover:bg-gray-900 transition-colors flex items-center justify-center gap-2">
-      <i data-lucide="key"></i>
       Войти
     </button>
   </form>
