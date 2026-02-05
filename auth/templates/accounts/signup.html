@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+  <div class="text-center mb-6">
+    <i data-lucide="user-plus" class="w-12 h-12 text-gold mx-auto"></i>
+    <h2 class="text-2xl font-bold mt-4">Создать аккаунт</h2>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    
+    <div class="mb-4">
+      <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Имя пользователя</label>
+      {{ form.username }}
+      {% if form.username.errors %}
+        <p class="text-red-600 text-sm mt-1">{{ form.username.errors|first }}</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-4">
+      <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+      {{ form.password1 }}
+      {% if form.password1.errors %}
+        <p class="text-red-600 text-sm mt-1">{{ form.password1.errors|first }}</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-6">
+      <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Подтверждение пароля</label>
+      {{ form.password2 }}
+      {% if form.password2.errors %}
+        <p class="text-red-600 text-sm mt-1">{{ form.password2.errors|first }}</p>
+      {% endif %}
+    </div>
+
+    <button type="submit" class="w-full bg-black text-gold py-2 px-4 rounded-lg font-medium hover:bg-gray-900 transition-colors flex items-center justify-center gap-2">
+      <i data-lucide="log-in"></i>
+      Зарегистрироваться
+    </button>
+  </form>
+
+  <div class="mt-6 text-center text-sm text-gray-600">
+    Уже есть аккаунт? <a href="{% url 'login' %}" class="text-gold hover:underline">Войти</a>
+  </div>
+</div>
+{% endblock %}

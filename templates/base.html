@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Облачное хранилище{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: '#D4AF37',
+            'gold-light': '#E6C97A',
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="bg-black text-white p-4 shadow-md">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold flex items-center gap-2">
+        <i data-lucide="cloud" class="text-gold"></i>
+        Облако
+      </h1>
+      <nav>
+        {% if user.is_authenticated %}
+          <span class="mr-4">Привет, {{ user.username }}!</span>
+          <a href="{% url 'logout' %}" class="text-gold hover:underline">Выйти</a>
+        {% else %}
+          <a href="{% url 'login' %}" class="text-gold hover:underline mr-4">Войти</a>
+          <a href="{% url 'signup' %}" class="text-gold hover:underline">Регистрация</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="container mx-auto mt-6 px-4">
+    {% if messages %}
+      <div class="mb-4">
+        {% for message in messages %}
+          {% if message.tags == "error" %}
+            <div class="p-3 rounded-lg bg-red-100 border border-red-300 text-red-800">
+              {{ message }}
+            </div>
+          {% else %}
+            <div class="p-3 rounded-lg bg-green-100 border border-green-300 text-green-800">
+              {{ message }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>
