@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG')
 
 ALLOWED_HOSTS = []
 
@@ -109,6 +109,8 @@ AWS_QUERYSTRING_AUTH = True
 AWS_S3_FILE_OVERWRITE = False
 
 AWS_S3_CUSTOM_DOMAIN = f"localhost:9000/{AWS_STORAGE_BUCKET_NAME}"
+
+LOGOUT_REDIRECT_URL = 'login'
 
 if os.getenv('DEBUG', 'True').lower() == 'true':
     ALLOWED_HOSTS = ['*']

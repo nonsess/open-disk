@@ -29,7 +29,12 @@
       <nav>
         {% if user.is_authenticated %}
           <span class="mr-4">Привет, {{ user.username }}!</span>
-          <a href="{% url 'logout' %}" class="text-gold hover:underline">Выйти</a>
+          <form method="post" action="{% url 'logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="text-gold hover:underline bg-transparent border-none cursor-pointer">
+              Выйти
+            </button>
+          </form>
         {% else %}
           <a href="{% url 'login' %}" class="text-gold hover:underline mr-4">Войти</a>
           <a href="{% url 'signup' %}" class="text-gold hover:underline">Регистрация</a>
