@@ -1,4 +1,5 @@
 import boto3
+from mypy_boto3_s3 import S3Client
 from django.conf import settings
 from botocore.exceptions import ClientError
 from django.contrib.auth.models import User
@@ -6,7 +7,7 @@ from django.contrib.auth.models import User
 
 class MinIOClient:
     def __init__(self):
-        self.client = boto3.client(
+        self.client: S3Client = boto3.client(
             's3',
             endpoint_url=settings.AWS_S3_ENDPOINT_URL,
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -16,6 +17,12 @@ class MinIOClient:
         )
         self.bucket = settings.AWS_STORAGE_BUCKET_NAME
     
+    def create_minio_bucket(self):
+        try:
+            self.client.head_bucket(Bucket=self.bucket)
+        except ClientError as e:
+            self.client.create_bucket(Bucket=self.bucket)
+
     @staticmethod
     def normalize_path(path: str) -> str:
         if not path:
