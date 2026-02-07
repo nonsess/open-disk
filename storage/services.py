@@ -1,7 +1,7 @@
-from typing import List, Dict, Optional, Tuple, Set
 import os
+from typing import List, Dict, Optional, Tuple, Set
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import UploadedFile
 
@@ -96,16 +96,18 @@ class StorageService:
         relative_paths: List[str]
     ) -> Tuple[int, List[str]]:
         uploaded_count = 0
-        errors = []
+        errors: List[str] = []
         folder_paths: Set[str] = set()
         
         for uploaded_file, rel_path in zip(files, relative_paths):
             try:
                 rel_path = MinIOClient.normalize_path(rel_path)
+                
                 folder_path = os.path.dirname(rel_path)
                 file_name = os.path.basename(rel_path)
                 
                 StoredFile._validate_filename(file_name)
+                
                 if folder_path:
                     Folder._validate_path(folder_path)
                 
@@ -116,7 +118,6 @@ class StorageService:
                     mime_type=uploaded_file.content_type or 'application/octet-stream',
                     path=folder_path
                 )
-                stored_file.save()
                 
                 full_path = f"user-{user.id}-files/{rel_path}"
                 stored_file.file.save(full_path, uploaded_file, save=True)
@@ -138,10 +139,26 @@ class StorageService:
             except Exception as e:
                 errors.append(f"{rel_path}: {str(e)}")
         
-        StorageService._create_folders_from_paths(user, folder_paths)
+        StorageService._create_missing_folders(user, folder_paths)
         
         return uploaded_count, errors
     
+    @staticmethod
+    def _create_missing_folders(user: User, folder_paths: Set[str]) -> None:
+        for full_folder_path in folder_paths:
+            if '/' in full_folder_path:
+                parent_path = '/'.join(full_folder_path.split('/')[:-1])
+                folder_name = full_folder_path.split('/')[-1]
+            else:
+                parent_path = ''
+                folder_name = full_folder_path
+            
+            Folder.objects.get_or_create(
+                owner=user,
+                path=parent_path,
+                name=folder_name
+            )
+
     @staticmethod
     def _create_folders_from_paths(user: User, folder_paths: Set[str]) -> None:
         for full_folder_path in folder_paths:
@@ -174,6 +191,80 @@ class StorageService:
         except Exception as e:
             return False, f"Ошибка при удалении файла: {str(e)}"
     
+    @staticmethod
+    @transaction.atomic
+    def delete_folder(user: User, folder_path: str) -> Tuple[bool, str, str]:
+        try:
+            folder_path = MinIOClient.normalize_path(folder_path)
+            
+            if not folder_path:
+                folder_name = "корневую папку"
+                redirect_path = ''
+            else:
+                parts = folder_path.split('/')
+                folder_name = parts[-1] if parts else "папку"
+                
+                if len(parts) > 1:
+                    redirect_path = '/'.join(parts[:-1])
+                else:
+                    redirect_path = ''
+            
+            files_query = StoredFile.objects.filter(
+                owner=user,
+                path=folder_path
+            )
+            
+            files_deleted_count = files_query.count()
+            
+            for file_obj in files_query:
+                try:
+                    file_obj.file.delete(save=False)
+                except Exception:
+                    pass
+            
+            files_query.delete()
+            
+            subfolders_query = Folder.objects.filter(
+                owner=user,
+                path=folder_path
+            )
+            subfolders_count = subfolders_query.count()
+            subfolders_query.delete()
+            
+            if folder_path:
+                if '/' in folder_path:
+                    parts = folder_path.split('/')
+                    parent_path = '/'.join(parts[:-1])
+                    current_folder_name = parts[-1]
+                else:
+                    parent_path = ''
+                    current_folder_name = folder_path
+                
+                Folder.objects.filter(
+                    owner=user,
+                    path=parent_path,
+                    name=current_folder_name
+                ).delete()
+            
+            minio_client = MinIOClient()
+            minio_success, minio_message = minio_client.delete_folder(
+                user, folder_path
+            )
+            
+            message = f"Папка '{folder_name}' удалена."
+            if files_deleted_count > 0:
+                message += f" Удалено {files_deleted_count} файлов."
+            if subfolders_count > 0:
+                message += f" Удалено {subfolders_count} подпапок."
+            
+            if not minio_success:
+                message += f" Внимание при удалении из хранилища: {minio_message}"
+            
+            return True, message, redirect_path
+            
+        except Exception as e:
+            return False, f"Ошибка при удаления папки: {str(e)}", ""
+
     @staticmethod
     def validate_upload_data(
         files: List[UploadedFile],

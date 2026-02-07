@@ -1,156 +1,420 @@
 {% extends 'base.html' %}
 
-{% block title %}Мои файлы{% endblock %}
+{% block title %}{% if current_path %}{{ current_path }}{% else %}Мои файлы{% endif %}{% endblock %}
 
 {% block content %}
-<div class="mb-6 max-w-7xl">
-  <!-- Breadcrumbs -->
-  <nav class="text-sm mb-4" aria-label="Breadcrumb">
-    <ol class="flex items-center space-x-2">
-      {% for crumb in breadcrumbs %}
-        {% if not forloop.last %}
-          <li>
-            <a href="{% url 'file_list' %}{% if crumb.path %}?path={{ crumb.path|urlencode }}{% endif %}" 
-               class="text-gold hover:underline flex items-center">
-              {{ crumb.name }}
-              <i data-lucide="chevron-right" class="w-4 h-4 mx-1"></i>
-            </a>
-          </li>
-        {% else %}
-          <li class="text-gray-500">{{ crumb.name }}</li>
-        {% endif %}
-      {% endfor %}
-    </ol>
-  </nav>
-
-  <!-- Заголовок и кнопки -->
-  <div class="flex justify-between items-center">
-    <h2 class="text-2xl font-bold">
-      {% if current_path %}
-        {{ current_path|default:"Мои файлы" }}
-      {% else %}
-        Мои файлы
-      {% endif %}
-    </h2>
-    <div class="flex gap-2">
-      <a href="{% url 'upload_file' %}" class="bg-black text-gold px-4 py-2 rounded-lg hover:bg-gray-900 flex items-center gap-1">
-        <i data-lucide="upload"></i> Загрузить
+<div class="container mx-auto px-4 py-6">
+  <!-- Хлебные крошки -->
+  <div class="mb-6">
+    <nav class="flex items-center text-sm text-gray-600" aria-label="Навигация">
+      <a href="{% url 'file_list' %}" class="text-gold hover:text-gold-dark flex items-center">
+        <i data-lucide="home" class="w-4 h-4 mr-2"></i>
+        Главная
       </a>
-      <button onclick="showCreateFolderModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center gap-1">
-        <i data-lucide="folder-plus"></i> Создать папку
+      
+      {% if breadcrumbs|length > 1 %}
+        <i data-lucide="chevron-right" class="w-4 h-4 mx-2 text-gray-400"></i>
+        
+        {% for crumb in breadcrumbs %}
+          {% if not forloop.first and not forloop.last %}
+            <a href="{% url 'file_list' %}{% if crumb.path %}?path={{ crumb.path|urlencode }}{% endif %}" 
+               class="hover:text-gold truncate max-w-[120px]">
+              {{ crumb.name }}
+            </a>
+            <i data-lucide="chevron-right" class="w-4 h-4 mx-2 text-gray-400"></i>
+          {% elif forloop.last %}
+            <span class="text-gray-900 font-medium truncate max-w-[200px]">{{ crumb.name }}</span>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </nav>
+  </div>
+
+  <!-- Заголовок и кнопки действий -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">
+        {% if current_path %}
+          {{ current_path|truncatechars:60 }}
+        {% else %}
+          Мои файлы
+        {% endif %}
+      </h1>
+      {% if current_path %}
+        <p class="text-sm text-gray-500 mt-1">{{ folders|length }} папок, {{ files|length }} файлов</p>
+      {% endif %}
+    </div>
+    
+    <div class="flex flex-wrap gap-2">
+      <!-- Кнопка загрузки -->
+      <a href="{% url 'upload_file' %}" 
+         class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-700 text-white px-4 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        Загрузить
+      </a>
+      
+      <!-- Кнопка создания папки -->
+      <button onclick="showCreateFolderModal()"
+              class="inline-flex items-center gap-2 bg-white text-gray-700 px-4 py-2.5 rounded-lg border border-gray-300 hover:border-gold hover:text-gold transition-all">
+        <i data-lucide="folder-plus" class="w-4 h-4"></i>
+        Новая папка
       </button>
+      
+      <!-- Кнопка удаления папки (если не корень) -->
+      {% if current_path %}
+        <button onclick="showDeleteFolderModal('{{ current_path }}')"
+                class="inline-flex items-center gap-2 bg-white text-red-600 px-4 py-2.5 rounded-lg border border-red-200 hover:bg-red-50 transition-all">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          Удалить папку
+        </button>
+      {% endif %}
     </div>
   </div>
-</div>
 
-<!-- Единый список файлов и папок -->
-{% if folders or files %}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-    <!-- Папки (всегда сверху) -->
-    {% for folder in folders %}
-      <div class="folder-item border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-all cursor-pointer"
-           data-path="{{ folder.full_path|urlencode }}">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
-            <i data-lucide="folder" class="w-6 h-6 text-yellow-600"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h4 class="font-medium truncate text-gray-900">{{ folder.name }}</h4>
-            <p class="text-xs text-gray-500 mt-0.5">{{ folder.created_at|date:"d.m.Y H:i" }}</p>
-          </div>
-        </div>
-      </div>
-    {% endfor %}
-
-    <!-- Файлы -->
-    {% for file in files %}
-      <div class="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-all">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-            <i data-lucide="file" class="w-6 h-6 text-gray-600"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h4 class="font-medium truncate text-gray-900">{{ file.original_name }}</h4>
-            <p class="text-xs text-gray-500 mt-0.5">
-              {{ file.size|filesizeformat }} · {{ file.uploaded_at|date:"d.m.Y H:i" }}
-            </p>
-          </div>
-        </div>
-        <div class="mt-3 flex justify-end gap-2">
-          <a href="{% url 'download_file' file.pk %}" class="text-gray-500 hover:text-gold" title="Скачать">
-            <i data-lucide="download" class="w-4 h-4"></i>
+  <!-- Содержимое папки -->
+  {% if folders or files %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      <!-- Папки -->
+      {% for folder in folders %}
+        <div class="group relative bg-white border border-gray-200 rounded-xl p-4 hover:border-gold hover:shadow-lg transition-all duration-200">
+          <a href="{% url 'file_list' %}?path={{ folder.full_path|urlencode }}" 
+             class="block cursor-pointer">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-50 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="folder" class="w-6 h-6 text-yellow-600"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-gray-900 truncate">{{ folder.name }}</h3>
+                <p class="text-xs text-gray-500 mt-0.5">{{ folder.created_at|date:"d.m.Y" }}</p>
+              </div>
+            </div>
           </a>
-          <form method="post" action="{% url 'delete_file' file.pk %}" class="inline" 
-                onsubmit="return confirm('Удалить файл?')">
-            {% csrf_token %}
-            <button type="submit" class="text-gray-500 hover:text-red-500" title="Удалить">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
-          </form>
         </div>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
+      {% endfor %}
 
-<!-- Пустое состояние -->
-{% if not folders and not files %}
-  <div class="text-center py-12 text-gray-500">
-    <i data-lucide="folder-open" class="w-12 h-12 mx-auto text-gray-300"></i>
-    <p class="mt-4">Папка пуста</p>
-    <p class="mt-2 text-sm">Загрузите файлы или создайте папки</p>
-  </div>
-{% endif %}
+      <!-- Файлы -->
+      {% for file in files %}
+        <div class="group relative bg-white border border-gray-200 rounded-xl p-4 hover:border-blue-200 hover:shadow-lg transition-all duration-200">
+          <div class="flex items-center gap-3 mb-3">
+            <!-- Иконка файла по типу -->
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="file" class="w-6 h-6 text-gray-600"></i>
+            </div>
+            
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-gray-900 truncate" title="{{ file.original_name }}">
+                {{ file.original_name|truncatechars:30 }}
+              </h3>
+              <p class="text-xs text-gray-500 mt-0.5">
+                {{ file.uploaded_at|date:"d.m.Y H:i" }}
+              </p>
+            </div>
+          </div>
+          
+          <!-- Информация о файле -->
+          <div class="space-y-2 mb-3">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-gray-500">Размер:</span>
+              <span class="font-medium">{{ file.get_size_display }}</span>
+            </div>
+          </div>
+          
+          <!-- Кнопки действий -->
+          <div class="flex gap-2">
+            <a href="{% url 'download_file' file.pk %}"
+               class="flex-1 inline-flex items-center justify-center gap-1.5 bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              Скачать
+            </a>
+            
+            <form method="post" action="{% url 'delete_file' file.pk %}" class="flex-1">
+              {% csrf_token %}
+              <button type="submit" 
+                      onclick="return confirm('Удалить файл «{{ file.original_name }}»?')"
+                      class="w-full inline-flex items-center justify-center gap-1.5 bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm hover:bg-red-100 transition-colors">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                Удалить
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <!-- Пустое состояние -->
+    <div class="text-center py-16 px-4">
+      <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
+        <i data-lucide="folder-open" class="w-12 h-12 text-gray-400"></i>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-900 mb-2">Папка пуста</h3>
+      <p class="text-gray-600 mb-8 max-w-md mx-auto">
+        {% if current_path %}
+          В этой папке пока нет файлов или других папок.
+        {% else %}
+          Начните работу с хранилищем, загрузив файлы или создав папки.
+        {% endif %}
+      </p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="{% url 'upload_file' %}" 
+           class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-gold to-gold-dark text-white px-6 py-3 rounded-lg hover:opacity-90 transition-all">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          Загрузить файлы
+        </a>
+        <button onclick="showCreateFolderModal()"
+                class="inline-flex items-center justify-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-lg border border-gray-300 hover:border-gold hover:text-gold transition-all">
+          <i data-lucide="folder-plus" class="w-4 h-4"></i>
+          Создать папку
+        </button>
+      </div>
+    </div>
+  {% endif %}
+</div>
 
 <!-- Модальное окно создания папки -->
-<div id="folderModal" class="hidden rounded-lg border border-gray-200 p-6 bg-white shadow-xl max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-  <h3 class="text-xl font-bold mb-4">Создать папку</h3>
-  <form method="post" action="{% url 'create_folder' %}">
-    {% csrf_token %}
-    <input type="hidden" name="path" value="{{ current_path }}">
-    <div class="mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-1">Имя папки</label>
-      <input type="text" name="name" required 
-             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:outline-none">
-    </div>
-    <div class="flex gap-3">
-      <button type="submit" class="bg-black text-gold px-4 py-2 rounded-lg hover:bg-gray-900">
-        Создать
-      </button>
-      <button type="button" onclick="closeCreateFolderModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-        Отмена
+<div id="createFolderModal" class="modal hidden">
+  <div class="modal-content max-w-md">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Создать папку</h3>
+      <button onclick="closeModal('createFolderModal')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
-  </form>
+    
+    <form method="post" action="{% url 'create_folder' %}" id="createFolderForm">
+      {% csrf_token %}
+      <input type="hidden" name="path" value="{{ current_path }}">
+      
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Имя папки</label>
+        <input type="text" 
+               name="name" 
+               required
+               id="folderNameInput"
+               placeholder="Введите название папки"
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
+               oninput="validateFolderName(this)">
+        <p id="folderNameError" class="mt-2 text-sm text-red-600 hidden"></p>
+      </div>
+      
+      <div class="flex gap-3">
+        <button type="submit" 
+                id="createFolderBtn"
+                class="flex-1 bg-gradient-to-r from-gold to-gold-dark text-white px-6 py-3 rounded-lg hover:opacity-90 transition-all">
+          Создать
+        </button>
+        <button type="button" 
+                onclick="closeModal('createFolderModal')"
+                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<script>
-function showCreateFolderModal() {
-  document.getElementById('folderModal').classList.remove('hidden');
+<!-- Модальное окно удаления папки -->
+<div id="deleteFolderModal" class="modal hidden">
+  <div class="modal-content max-w-md">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Удалить папку</h3>
+      <button onclick="closeModal('deleteFolderModal')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
+    <div class="mb-6">
+      <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
+        <i data-lucide="alert-triangle" class="w-8 h-8 text-red-600"></i>
+      </div>
+      <p class="text-center text-gray-700" id="deleteFolderMessage">
+        Вы уверены, что хотите удалить текущую папку?
+      </p>
+      <p class="text-center text-sm text-gray-500 mt-2" id="deleteFolderInfo">
+        Будут удалены все файлы и подпапки внутри.
+      </p>
+    </div>
+    
+    <form method="post" action="{% url 'delete_folder' %}" id="deleteFolderForm">
+      {% csrf_token %}
+      <input type="hidden" name="path" value="{{ current_path }}">
+      
+      <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors">
+          Удалить
+        </button>
+        <button type="button" 
+                onclick="closeModal('deleteFolderModal')"
+                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
 }
 
-function closeCreateFolderModal() {
-  document.getElementById('folderModal').classList.add('hidden');
+.modal.hidden {
+  display: none;
 }
 
-// Закрытие по клику вне
-document.getElementById('folderModal').addEventListener('click', (e) => {
-  if (e.target.id === 'folderModal') {
-    closeCreateFolderModal();
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
   }
-});
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-// Навигация по папкам
-document.querySelectorAll('.folder-item').forEach(item => {
-  item.addEventListener('click', () => {
-    const path = item.getAttribute('data-path');
-    window.location.href = "{% url 'file_list' %}" + (path ? "?path=" + encodeURIComponent(path) : "");
-  });
-});
+/* Анимация появления элементов */
+.group {
+  animation: fadeInUp 0.3s ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+
+<script>
+// Функции для модальных окон
+function showCreateFolderModal() {
+  document.getElementById('createFolderModal').classList.remove('hidden');
+  document.getElementById('folderNameInput').focus();
+}
+
+function showDeleteFolderModal(currentPath) {
+  const modal = document.getElementById('deleteFolderModal');
+  const message = document.getElementById('deleteFolderMessage');
+  
+  // Извлекаем имя текущей папки из пути
+  let folderName = 'текущую папку';
+  if (currentPath) {
+    const pathParts = currentPath.split('/');
+    if (pathParts.length > 0) {
+      folderName = pathParts[pathParts.length - 1];
+    }
+  }
+  
+  message.textContent = `Вы уверены, что хотите удалить ${folderName}?`;
+  modal.classList.remove('hidden');
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.add('hidden');
+}
+
+// Валидация имени папки
+function validateFolderName(input) {
+  const errorEl = document.getElementById('folderNameError');
+  const name = input.value.trim();
+  
+  if (!name) {
+    errorEl.textContent = 'Имя папки не может быть пустым';
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+  
+  // Проверка на запрещенные символы
+  const forbiddenChars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+  for (const char of forbiddenChars) {
+    if (name.includes(char)) {
+      errorEl.textContent = `Имя не может содержать символ "${char}"`;
+      errorEl.classList.remove('hidden');
+      return false;
+    }
+  }
+  
+  // Проверка на точку или пробел в конце
+  if (name.endsWith('.') || name.endsWith(' ')) {
+    errorEl.textContent = 'Имя не может заканчиваться точкой или пробелом';
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+  
+  errorEl.classList.add('hidden');
+  return true;
+}
+
+// Вспомогательная функция для получения CSRF токена
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
 
 // Инициализация иконок
 document.addEventListener('DOMContentLoaded', () => {
-  lucide.createIcons();
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+  
+  // Анимация появления элементов с задержкой
+  document.querySelectorAll('.group').forEach((item, index) => {
+    item.style.animationDelay = `${index * 0.05}s`;
+  });
+});
+
+// Закрытие модальных окон по ESC
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal').forEach(modal => {
+      if (!modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+    });
+  }
+});
+
+// Закрытие модального окна по клику вне его
+document.querySelectorAll('.modal').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+    }
+  });
 });
 </script>
 {% endblock %}
