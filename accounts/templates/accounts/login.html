@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %} 
 
 {% block title %}Вход{% endblock %}
 
@@ -7,12 +7,6 @@
   <div class="text-center mb-6">
     <h2 class="text-2xl font-bold mt-4">Войти</h2>
   </div>
-
-  {% if form.non_field_errors %}
-    <div class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
-      Неверное имя пользователя или пароль.
-    </div>
-  {% endif %}
 
   <form method="post">
     {% csrf_token %}
