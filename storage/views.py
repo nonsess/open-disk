@@ -53,41 +53,41 @@ def create_folder(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def upload_file(request: HttpRequest) -> HttpResponse:
-    if request.method == 'POST':
-        files = request.FILES.getlist('file')
-        relative_paths = request.POST.getlist('relative_path')
-        
-        error_message = StorageService.validate_upload_data(files, relative_paths)
-        if error_message:
-            messages.error(request, error_message)
-            return render(request, 'storage/upload.html')
-        
-        uploaded_count, errors = StorageService.upload_files(
-            user=request.user,
-            files=files,
-            relative_paths=relative_paths
-        )
-        
-        if uploaded_count > 0:
-            messages.success(
-                request, 
-                f"Успешно загружено {uploaded_count} файл(ов)!"
-            )
-        
-        if errors:
-            error_display = "; ".join(errors[:5])
-            if len(errors) > 5:
-                error_display += f" ... и ещё {len(errors) - 5} ошибок"
-            
-            messages.error(
-                request,
-                f"Ошибки при загрузке {len(errors)} файл(ов): {error_display}"
-            )
-        
-        return redirect('file_list')
+    if request.method != 'POST':
+        return render(request, 'storage/upload.html')
     
-    return render(request, 'storage/upload.html')
-
+    files = request.FILES.getlist('file')
+    relative_paths = request.POST.getlist('relative_path')
+    
+    error_message = StorageService.validate_upload_data(files, relative_paths)
+    if error_message:
+        messages.error(request, error_message)
+        return render(request, 'storage/upload.html')
+    
+    uploaded_count, errors = StorageService.upload_files(
+        user=request.user,
+        files=files,
+        relative_paths=relative_paths
+    )
+    
+    if uploaded_count > 0:
+        messages.success(
+            request, 
+            f"Успешно загружено {uploaded_count} файл(ов)!"
+        )
+    
+    if errors:
+        error_display = "; ".join(errors[:5])
+        if len(errors) > 5:
+            error_display += f" ... и ещё {len(errors) - 5} ошибок"
+        
+        messages.error(
+            request,
+            f"Ошибки при загрузке {len(errors)} файл(ов): {error_display}"
+        )
+    
+    return redirect('file_list')
+    
 
 @login_required
 def download_file(request: HttpRequest, pk: int) -> HttpResponseRedirect:
@@ -119,7 +119,7 @@ def delete_folder(request: HttpRequest) -> HttpResponseRedirect:
 
     if not path:
         messages.error(request, "Не указана папка для удаления.")
-        return redirect('file_list')   
+        return redirect('file_list')
 
     success, message, redirect_path = StorageService.delete_folder(
         user=request.user,
