@@ -1,143 +1,190 @@
-import os
-from django.db import IntegrityError
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from urllib.parse import quote, unquote
 
-from django.urls import reverse
-
 from storage.models import Folder, StoredFile
+from storage.services import StorageService
 
 
 @login_required
-def file_list(request):
-    current_path = request.GET.get('path', '')
-    if current_path:
-        current_path = unquote(current_path).lstrip('/')
-
-    if current_path:
-        files = StoredFile.objects.filter(owner=request.user, path=current_path).order_by('original_name')
-    else:
-        files = StoredFile.objects.filter(owner=request.user, path='').order_by('original_name')
-
-    if current_path:
-        folders = Folder.objects.filter(owner=request.user, path=current_path).order_by('name')
-    else:
-        folders = Folder.objects.filter(owner=request.user, path='').order_by('name')
-
-    breadcrumbs = [{'name': 'Главная', 'path': ''}]
-    if current_path:
-        parts = current_path.split('/')
-        accumulated = ''
-        for part in parts:
-            if accumulated:
-                accumulated += '/' + part
-            else:
-                accumulated = part
-            breadcrumbs.append({'name': part, 'path': accumulated})
-
+def file_list(request: HttpRequest) -> HttpResponse:
+    raw_path = request.GET.get('path', '')
+    current_path = unquote(raw_path).lstrip('/') if raw_path else ''
+    
+    files, folders, breadcrumbs = StorageService.get_folder_contents(
+        user=request.user,
+        current_path=current_path
+    )
+    
     context = {
         'files': files,
         'folders': folders,
         'current_path': current_path,
         'breadcrumbs': breadcrumbs,
     }
+    
     return render(request, 'storage/file_list.html', context)
 
-@login_required
-def create_folder(request):
-    if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        path = request.POST.get('path', '').strip()
-        
-        if not name:
-            messages.error(request, "Имя папки не может быть пустым.")
-            return redirect('file_list')
-        
-        folder = Folder(owner=request.user, name=name, path=path)
-        try:
-            folder.save()
-            messages.success(request, f"Папка '{name}' создана.")
-        except IntegrityError:
-            messages.error(request, f"Папка с таким названием существует.")
-
-    if path:
-        return redirect(f"{reverse('file_list')}?path={quote(path)}")
-    return redirect('file_list')
 
 @login_required
-def upload_file(request):
+def create_folder(request: HttpRequest) -> HttpResponse:
+    if request.method != 'POST':
+        return redirect('file_list')
+    
+    name = request.POST.get('name', '').strip()
+    path = request.POST.get('path', '').strip()
+    
+    success, message, _ = StorageService.create_folder(
+        user=request.user,
+        name=name,
+        path=path
+    )
+    
+    if success:
+        messages.success(request, message)
+    else:
+        messages.error(request, message)
+    
+    return _redirect_to_path(path)
+
+
+@login_required
+def upload_file(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         files = request.FILES.getlist('file')
         relative_paths = request.POST.getlist('relative_path')
-
-        if not files:
-            messages.error(request, "Файл(ы) не выбраны.")
+        
+        error_message = StorageService.validate_upload_data(files, relative_paths)
+        if error_message:
+            messages.error(request, error_message)
             return render(request, 'storage/upload.html')
-
-        if len(files) != len(relative_paths):
-            messages.error(request, "Ошибка при загрузке структуры папок.")
-            return render(request, 'storage/upload.html')
-
-        folder_paths = set()
-
-        for uploaded_file, rel_path in zip(files, relative_paths):
-            folder_path = os.path.dirname(rel_path)
-            file_name = os.path.basename(rel_path)
-
-            if folder_path:
-                parts = folder_path.split('/')
-                accumulated = ''
-                for part in parts:
-                    if accumulated:
-                        accumulated += '/' + part
-                    else:
-                        accumulated = part
-                    folder_paths.add(accumulated)
-
-            stored_file = StoredFile(
-                owner=request.user,
-                original_name=file_name,
-                size=uploaded_file.size,
-                mime_type=uploaded_file.content_type or 'application/octet-stream',
-                path=folder_path
+        
+        uploaded_count, errors = StorageService.upload_files(
+            user=request.user,
+            files=files,
+            relative_paths=relative_paths
+        )
+        
+        if uploaded_count > 0:
+            messages.success(
+                request, 
+                f"Успешно загружено {uploaded_count} файл(ов)!"
             )
-            stored_file.save()
+        
+        if errors:
+            error_display = "; ".join(errors[:5])
+            if len(errors) > 5:
+                error_display += f" ... и ещё {len(errors) - 5} ошибок"
             
-            full_path = f"user-{request.user.id}-files/{rel_path}"
-            stored_file.file.save(full_path, uploaded_file, save=True)
-
-        for full_folder_path in folder_paths:
-            if '/' in full_folder_path:
-                parent_path = '/'.join(full_folder_path.split('/')[:-1])
-                folder_name = full_folder_path.split('/')[-1]
-            else:
-                parent_path = ''
-                folder_name = full_folder_path
-
-            Folder.objects.get_or_create(
-                owner=request.user,
-                path=parent_path,
-                name=folder_name
+            messages.error(
+                request,
+                f"Ошибки при загрузке {len(errors)} файл(ов): {error_display}"
             )
-
-        messages.success(request, f"Загружено {len(files)} файл(ов)!")
+        
         return redirect('file_list')
     
     return render(request, 'storage/upload.html')
 
+
 @login_required
-def download_file(request, pk):
+def download_file(request: HttpRequest, pk: int) -> HttpResponseRedirect:
     file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
     return redirect(file_obj.file.url)
 
+
 @login_required
-def delete_file(request, pk):
-    if request.method == 'POST':
-        file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
-        file_obj.file.delete(save=False)
-        file_obj.delete()
-        messages.success(request, "Файл удалён.")
+def delete_file(request: HttpRequest, pk: int) -> HttpResponseRedirect:
+    if request.method != 'POST':
+        return redirect('file_list')
+    
+    success, message = StorageService.delete_file(request.user, pk)
+    
+    if success:
+        messages.success(request, message)
+    else:
+        messages.error(request, message)
+    
+    return redirect('file_list')
+
+
+@login_required
+def folder_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    folder = get_object_or_404(Folder, pk=pk, owner=request.user)
+    
+    files, folders, breadcrumbs = StorageService.get_folder_contents(
+        user=request.user,
+        current_path=folder.full_path
+    )
+    
+    context = {
+        'folder': folder,
+        'files': files,
+        'folders': folders,
+        'current_path': folder.full_path,
+        'breadcrumbs': breadcrumbs,
+    }
+    
+    return render(request, 'storage/folder_detail.html', context)
+
+
+@login_required
+def delete_folder(request: HttpRequest, pk: int) -> HttpResponseRedirect:
+    if request.method != 'POST':
+        return redirect('file_list')
+    
+    folder = get_object_or_404(Folder, pk=pk, owner=request.user)
+    
+    parent_path = folder.path
+    
+    try:
+        files_to_delete = StoredFile.objects.filter(
+            owner=request.user,
+            path__startswith=folder.full_path
+        )
+        
+        for file_obj in files_to_delete:
+            file_obj.file.delete(save=False)
+        
+        files_to_delete.delete()
+        
+        Folder.objects.filter(
+            owner=request.user,
+            path__startswith=folder.full_path
+        ).delete()
+        
+        folder.delete()
+        
+        messages.success(request, f"Папка '{folder.name}' и всё её содержимое удалены.")
+        
+    except Exception as e:
+        messages.error(request, f"Ошибка при удалении папки: {str(e)}")
+    
+    return _redirect_to_path(parent_path)
+
+
+def public_download(request: HttpRequest, uuid_str: str) -> HttpResponseRedirect:
+    try:
+        from uuid import UUID
+        file_uuid = UUID(uuid_str)
+        
+        file_obj = get_object_or_404(
+            StoredFile, 
+            public_link=file_uuid,
+            is_public=True
+        )
+        
+        return redirect(file_obj.file.url)
+        
+    except ValueError:
+        messages.error(request, "Некорректная ссылка.")
+        return redirect('file_list')
+
+
+def _redirect_to_path(path: str) -> HttpResponseRedirect:
+    if path:
+        encoded_path = quote(path)
+        return redirect(f"{reverse('file_list')}?path={encoded_path}")
     return redirect('file_list')
