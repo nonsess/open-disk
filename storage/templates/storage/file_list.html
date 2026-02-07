@@ -9,7 +9,6 @@
         Мои файлы
       </a>
       
-      
       {% if breadcrumbs|length > 1 %}
         <i data-lucide="chevron-right" class="w-3 h-3 mx-0.5"></i>
         
@@ -71,7 +70,7 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
       {% if folders %}
         {% for folder in folders %}
-        <div class="group">
+        <div class="group folder-item" data-folder-name="{{ folder.name }}" data-folder-path="{{ folder.full_path }}">
           <a href="{% url 'file_list' %}?path={{ folder.full_path|urlencode }}" 
               class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
             <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
@@ -89,7 +88,7 @@
     
       {% if files %}
         {% for file in files %}
-        <div class="group relative">
+        <div class="group relative file-item" data-file-name="{{ file.original_name }}" data-file-id="{{ file.pk }}">
           <div class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200">
             <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200 relative">
               <i data-lucide="file" class="w-8 h-8 text-blue-600"></i>
@@ -115,7 +114,7 @@
                 <i data-lucide="download" class="w-4 h-4 text-gray-600"></i>
               </a>
               
-              <form method="post" action="{% url 'delete_file' file.pk %}">
+              <form method="post" action="{% url 'delete_file' file.pk %}" class="delete-file-form">
                 {% csrf_token %}
                 <button type="submit" 
                         onclick="return confirm('Удалить файл «{{ file.original_name }}»?')"
@@ -166,6 +165,62 @@
   </button>
 </div>
 
+<div id="folderContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px]">
+  <button onclick="openSelectedFolder(); hideFolderContextMenu()" 
+          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+    <i data-lucide="folder-open" class="w-4 h-4 text-gray-500"></i>
+    <span>Открыть</span>
+  </button>
+  
+  <button onclick="renameSelectedFolder(); hideFolderContextMenu()" 
+          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+    <i data-lucide="edit" class="w-4 h-4 text-gray-500"></i>
+    <span>Переименовать</span>
+  </button>
+  
+  <button onclick="deleteSelectedFolder(); hideFolderContextMenu()" 
+          class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3">
+    <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
+    <span>Удалить</span>
+  </button>
+  
+  <div class="border-t border-gray-200 my-1"></div>
+  
+  <button onclick="copyFolderPath(); hideFolderContextMenu()" 
+          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+    <i data-lucide="copy" class="w-4 h-4 text-gray-500"></i>
+    <span>Копировать путь</span>
+  </button>
+</div>
+
+<div id="fileContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px]">
+  <button onclick="downloadSelectedFile(); hideFileContextMenu()" 
+          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+    <i data-lucide="download" class="w-4 h-4 text-gray-500"></i>
+    <span>Скачать</span>
+  </button>
+  
+  <button onclick="renameSelectedFile(); hideFileContextMenu()" 
+          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+    <i data-lucide="edit" class="w-4 h-4 text-gray-500"></i>
+    <span>Переименовать</span>
+  </button>
+  
+  <button onclick="deleteSelectedFile(); hideFileContextMenu()" 
+          class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3">
+    <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
+    <span>Удалить</span>
+  </button>
+  
+  <div class="border-t border-gray-200 my-1"></div>
+  
+  <button onclick="copyFilePath(); hideFileContextMenu()" 
+          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+    <i data-lucide="copy" class="w-4 h-4 text-gray-500"></i>
+    <span>Копировать путь</span>
+  </button>
+</div>
+
 <div id="createFolderModal" class="modal hidden">
   <div class="modal-content max-w-7xl">
     <div class="flex items-center justify-between mb-6">
@@ -209,17 +264,7 @@
 
 <div id="deleteFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
-    <div class="flex items-center justify-between mb-6">
-      <h3 class="text-xl font-bold text-gray-900">Удалить папку</h3>
-      <button onclick="closeModal('deleteFolderModal')" class="text-gray-400 hover:text-gray-600">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-    </div>
-    
     <div class="mb-6">
-      <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
-        <i data-lucide="alert-triangle" class="w-8 h-8 text-red-600"></i>
-      </div>
       <p class="text-center text-gray-700" id="deleteFolderMessage">
         Вы уверены, что хотите удалить текущую папку?
       </p>
@@ -239,6 +284,36 @@
         </button>
         <button type="button" 
                 onclick="closeModal('deleteFolderModal')"
+                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="deleteSelectedFolderModal" class="modal hidden">
+  <div class="modal-content max-w-md">
+    <div class="mb-6">
+      <p class="text-center text-gray-700" id="deleteSelectedFolderMessage">
+        Вы уверены, что хотите удалить папку "<span id="selectedFolderName"></span>"?
+      </p>
+      <p class="text-center text-sm text-gray-500 mt-2">
+        Будет удалено все содержимое папки.
+      </p>
+    </div>
+    
+    <form method="post" action="{% url 'delete_folder' %}" id="deleteSelectedFolderForm">
+      {% csrf_token %}
+      <input type="hidden" name="path" id="selectedFolderPath">
+      
+      <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors">
+          Удалить
+        </button>
+        <button type="button" 
+                onclick="closeModal('deleteSelectedFolderModal')"
                 class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
           Отмена
         </button>
@@ -285,13 +360,17 @@
   }
 }
 
-#contextMenu {
+#contextMenu,
+#folderContextMenu,
+#fileContextMenu {
   animation: fadeInUp 0.15s ease-out;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 #contextMenu button, 
-#contextMenu a {
+#contextMenu a,
+#folderContextMenu button,
+#fileContextMenu button {
   transition: background-color 0.15s ease;
 }
 
@@ -305,9 +384,24 @@
     transform: translateY(0);
   }
 }
+
+.selected-item {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
 </style>
 
 <script>
+let selectedFolder = {
+  name: '',
+  path: ''
+};
+
+let selectedFile = {
+  name: '',
+  id: ''
+};
+
 const ContextMenu = {
   element: null,
   isVisible: false,
@@ -317,29 +411,64 @@ const ContextMenu = {
       this.element = document.getElementById('contextMenu');
     }
     
-    document.addEventListener('contextmenu', this.handleContextMenu.bind(this));
     document.addEventListener('click', this.handleClick.bind(this));
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
   },
   
-  handleContextMenu: function(event) {
-    event.preventDefault();
-    
-    const target = event.target;
-    const isFileOrFolder = target.closest('.group') || 
-                          target.closest('a[href*="file_list"]') ||
-                          target.closest('.group *');
-    
-    if (isFileOrFolder) {
-      this.hide();
-      return;
-    }
-    
-    this.show(event.clientX, event.clientY);
-  },
-  
   show: function(x, y) {
     if (!this.element) return;
+    
+    this.element.classList.remove('hidden');
+    this.isVisible = true;
+    
+    this.element.style.left = x + 'px';
+    this.element.style.top = y + 'px';
+  },
+  
+  hide: function() {
+    if (this.element && this.isVisible) {
+      this.element.classList.add('hidden');
+      this.isVisible = false;
+    }
+  },
+  
+  handleClick: function(event) {
+    if (this.isVisible && !this.element.contains(event.target)) {
+      this.hide();
+    }
+  },
+  
+  handleKeyDown: function(event) {
+    if (event.key === 'Escape' && this.isVisible) {
+      this.hide();
+    }
+  }
+};
+
+const FolderContextMenu = {
+  element: null,
+  isVisible: false,
+  
+  init: function() {
+    if (!this.element) {
+      this.element = document.getElementById('folderContextMenu');
+    }
+    
+    document.addEventListener('click', this.handleClick.bind(this));
+    document.addEventListener('keydown', this.handleKeyDown.bind(this));
+  },
+  
+  show: function(x, y, folderElement) {
+    if (!this.element) return;
+    
+    selectedFolder.name = folderElement.getAttribute('data-folder-name');
+    selectedFolder.path = folderElement.getAttribute('data-folder-path');
+    
+    document.querySelectorAll('.folder-item').forEach(item => {
+      item.classList.remove('selected-item');
+    });
+    
+    folderElement.classList.add('selected-item');
     
     this.element.classList.remove('hidden');
     this.isVisible = true;
@@ -368,6 +497,10 @@ const ContextMenu = {
     if (this.element && this.isVisible) {
       this.element.classList.add('hidden');
       this.isVisible = false;
+      
+      document.querySelectorAll('.folder-item').forEach(item => {
+        item.classList.remove('selected-item');
+      });
     }
   },
   
@@ -384,10 +517,189 @@ const ContextMenu = {
   }
 };
 
+const FileContextMenu = {
+  element: null,
+  isVisible: false,
+  
+  init: function() {
+    if (!this.element) {
+      this.element = document.getElementById('fileContextMenu');
+    }
+    
+    document.addEventListener('click', this.handleClick.bind(this));
+    document.addEventListener('keydown', this.handleKeyDown.bind(this));
+  },
+  
+  show: function(x, y, fileElement) {
+    if (!this.element) return;
+    
+    selectedFile.name = fileElement.getAttribute('data-file-name');
+    selectedFile.id = fileElement.getAttribute('data-file-id');
+    
+    document.querySelectorAll('.file-item').forEach(item => {
+      item.classList.remove('selected-item');
+    });
+    
+    fileElement.classList.add('selected-item');
+    
+    this.element.classList.remove('hidden');
+    this.isVisible = true;
+    
+    const menuWidth = this.element.offsetWidth;
+    const menuHeight = this.element.offsetHeight;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    let posX = x;
+    let posY = y;
+    
+    if (x + menuWidth > windowWidth) {
+      posX = windowWidth - menuWidth - 10;
+    }
+    
+    if (y + menuHeight > windowHeight) {
+      posY = windowHeight - menuHeight - 10;
+    }
+    
+    this.element.style.left = posX + 'px';
+    this.element.style.top = posY + 'px';
+  },
+  
+  hide: function() {
+    if (this.element && this.isVisible) {
+      this.element.classList.add('hidden');
+      this.isVisible = false;
+      
+      document.querySelectorAll('.file-item').forEach(item => {
+        item.classList.remove('selected-item');
+      });
+    }
+  },
+  
+  handleClick: function(event) {
+    if (this.isVisible && !this.element.contains(event.target)) {
+      this.hide();
+    }
+  },
+  
+  handleKeyDown: function(event) {
+    if (event.key === 'Escape' && this.isVisible) {
+      this.hide();
+    }
+  }
+};
+
+function openSelectedFolder() {
+  if (selectedFolder.path) {
+    window.location.href = `{% url 'file_list' %}?path=${encodeURIComponent(selectedFolder.path)}`;
+  }
+}
+
+function renameSelectedFolder() {
+  alert(`Функция переименования папки "${selectedFolder.name}" будет реализована позже`);
+  hideFolderContextMenu();
+}
+
+function deleteSelectedFolder() {
+  if (selectedFolder.name && selectedFolder.path) {
+    document.getElementById('selectedFolderName').textContent = selectedFolder.name;
+    document.getElementById('selectedFolderPath').value = selectedFolder.path;
+    
+    const modal = document.getElementById('deleteSelectedFolderModal');
+    modal.classList.remove('hidden');
+    
+    hideFolderContextMenu();
+  }
+}
+
+function copyFolderPath() {
+  if (selectedFolder.path) {
+    navigator.clipboard.writeText(selectedFolder.path)
+      .then(() => {
+        alert(`Путь скопирован: ${selectedFolder.path}`);
+      })
+      .catch(err => {
+        console.error('Ошибка при копировании: ', err);
+      });
+    
+    hideFolderContextMenu();
+  }
+}
+
+function downloadSelectedFile() {
+  if (selectedFile.id) {
+    window.location.href = `{% url 'download_file' 0 %}`.replace('0', selectedFile.id);
+  }
+}
+
+function renameSelectedFile() {
+  alert(`Функция переименования файла "${selectedFile.name}" будет реализована позже`);
+  hideFileContextMenu();
+}
+
+function deleteSelectedFile() {
+  if (selectedFile.name && selectedFile.id) {
+    if (confirm(`Удалить файл «${selectedFile.name}»?`)) {
+      const form = document.querySelector(`.file-item[data-file-id="${selectedFile.id}"] .delete-file-form`);
+      if (form) {
+        form.submit();
+      }
+    }
+  }
+  hideFileContextMenu();
+}
+
+function copyFilePath() {
+  if (selectedFile.name) {
+    navigator.clipboard.writeText(selectedFile.name)
+      .then(() => {
+        alert(`Имя файла скопировано: ${selectedFile.name}`);
+      })
+      .catch(err => {
+        console.error('Ошибка при копировании: ', err);
+      });
+    
+    hideFileContextMenu();
+  }
+}
+
+function hideContextMenu() {
+  ContextMenu.hide();
+}
+
+function hideFolderContextMenu() {
+  FolderContextMenu.hide();
+}
+
+function hideFileContextMenu() {
+  FileContextMenu.hide();
+}
+
+function showEmptyAreaContextMenu(event) {
+  event.preventDefault();
+  
+  const target = event.target;
+  const isEmptyArea = target.id === 'emptyArea' || 
+                      target.closest('#emptyArea') || 
+                      (!target.closest('.folder-item') && 
+                       !target.closest('.file-item') && 
+                       !target.closest('#contextMenu') &&
+                       !target.closest('#folderContextMenu') &&
+                       !target.closest('#fileContextMenu'));
+  
+  if (isEmptyArea) {
+    hideFolderContextMenu();
+    hideFileContextMenu();
+    ContextMenu.show(event.clientX, event.clientY);
+  }
+}
+
 function showCreateFolderModal() {
   document.getElementById('createFolderModal').classList.remove('hidden');
   document.getElementById('folderNameInput').focus();
-  ContextMenu.hide();
+  hideContextMenu();
+  hideFolderContextMenu();
+  hideFileContextMenu();
 }
 
 function showDeleteFolderModal(currentPath) {
@@ -404,7 +716,9 @@ function showDeleteFolderModal(currentPath) {
   
   message.textContent = `Вы уверены, что хотите удалить ${folderName}?`;
   modal.classList.remove('hidden');
-  ContextMenu.hide();
+  hideContextMenu();
+  hideFolderContextMenu();
+  hideFileContextMenu();
 }
 
 function closeModal(modalId) {
@@ -446,6 +760,49 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   ContextMenu.init();
+  FolderContextMenu.init();
+  FileContextMenu.init();
+  
+  document.querySelectorAll('.folder-item').forEach(folder => {
+    folder.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      hideContextMenu();
+      hideFileContextMenu();
+      FolderContextMenu.show(e.clientX, e.clientY, this);
+    });
+  });
+  
+  document.querySelectorAll('.file-item').forEach(file => {
+    file.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      hideContextMenu();
+      hideFolderContextMenu();
+      FileContextMenu.show(e.clientX, e.clientY, this);
+    });
+  });
+  
+  const emptyArea = document.getElementById('emptyArea');
+  if (emptyArea) {
+    emptyArea.addEventListener('contextmenu', showEmptyAreaContextMenu);
+  }
+  
+  document.addEventListener('contextmenu', function(e) {
+    const target = e.target;
+    const isFolder = target.closest('.folder-item');
+    const isFile = target.closest('.file-item');
+    const isEmptyArea = target.id === 'emptyArea' || target.closest('#emptyArea');
+    
+    if (!isFolder && !isFile && !isEmptyArea) {
+      const fileManager = document.getElementById('fileManager');
+      if (fileManager && fileManager.contains(target)) {
+        showEmptyAreaContextMenu(e);
+      }
+    }
+  });
   
   document.querySelectorAll('.group').forEach((item, index) => {
     item.style.animationDelay = `${index * 0.05}s`;
@@ -458,6 +815,20 @@ document.querySelectorAll('.modal').forEach(modal => {
       this.classList.add('hidden');
     }
   });
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    hideContextMenu();
+    hideFolderContextMenu();
+    hideFileContextMenu();
+    
+    document.querySelectorAll('.modal').forEach(modal => {
+      if (!modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+    });
+  }
 });
 </script>
 {% endblock %}
