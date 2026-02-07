@@ -3,44 +3,154 @@
 {% block title %}Мои файлы{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex justify-between items-center">
-  <h2 class="text-2xl font-bold">Мои файлы</h2>
-  <a href="{% url 'upload_file' %}" class="bg-black text-gold px-4 py-2 rounded-lg hover:bg-gray-900 flex items-center gap-1">
-    <i data-lucide="upload"></i> Загрузить
-  </a>
+<div class="mb-6 max-w-7xl">
+  <!-- Breadcrumbs -->
+  <nav class="text-sm mb-4" aria-label="Breadcrumb">
+    <ol class="flex items-center space-x-2">
+      {% for crumb in breadcrumbs %}
+        {% if not forloop.last %}
+          <li>
+            <a href="{% url 'file_list' %}{% if crumb.path %}?path={{ crumb.path|urlencode }}{% endif %}" 
+               class="text-gold hover:underline flex items-center">
+              {{ crumb.name }}
+              <i data-lucide="chevron-right" class="w-4 h-4 mx-1"></i>
+            </a>
+          </li>
+        {% else %}
+          <li class="text-gray-500">{{ crumb.name }}</li>
+        {% endif %}
+      {% endfor %}
+    </ol>
+  </nav>
+
+  <!-- Заголовок и кнопки -->
+  <div class="flex justify-between items-center">
+    <h2 class="text-2xl font-bold">
+      {% if current_path %}
+        {{ current_path|default:"Мои файлы" }}
+      {% else %}
+        Мои файлы
+      {% endif %}
+    </h2>
+    <div class="flex gap-2">
+      <a href="{% url 'upload_file' %}" class="bg-black text-gold px-4 py-2 rounded-lg hover:bg-gray-900 flex items-center gap-1">
+        <i data-lucide="upload"></i> Загрузить
+      </a>
+      <button onclick="showCreateFolderModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center gap-1">
+        <i data-lucide="folder-plus"></i> Создать папку
+      </button>
+    </div>
+  </div>
 </div>
 
-{% if files %}
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {% for file in files %}
-      <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
-        <div class="flex justify-between items-start">
-          <div>
-            <h3 class="font-medium truncate max-w-xs">{{ file.original_name }}</h3>
-            <p class="text-sm text-gray-500 mt-1">{{ file.size|filesizeformat }}</p>
+<!-- Единый список файлов и папок -->
+{% if folders or files %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <!-- Папки (всегда сверху) -->
+    {% for folder in folders %}
+      <div class="folder-item border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-all cursor-pointer"
+           data-path="{{ folder.full_path|urlencode }}">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="folder" class="w-6 h-6 text-yellow-600"></i>
           </div>
-          <div class="flex gap-2">
-            <a href="{% url 'download_file' file.pk %}" class="text-gray-500 hover:text-gold" title="Скачать">
-              <i data-lucide="download"></i>
-            </a>
-            <form method="post" action="{% url 'delete_file' file.pk %}" class="inline" onsubmit="return confirm('Удалить файл?')">
-              {% csrf_token %}
-              <button type="submit" class="text-gray-500 hover:text-red-500" title="Удалить">
-                <i data-lucide="trash-2"></i>
-              </button>
-            </form>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-medium truncate text-gray-900">{{ folder.name }}</h4>
+            <p class="text-xs text-gray-500 mt-0.5">{{ folder.created_at|date:"d.m.Y H:i" }}</p>
           </div>
         </div>
-        <div class="mt-3 text-xs text-gray-400">
-          {{ file.uploaded_at|date:"d.m.Y H:i" }}
+      </div>
+    {% endfor %}
+
+    <!-- Файлы -->
+    {% for file in files %}
+      <div class="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-all">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="file" class="w-6 h-6 text-gray-600"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-medium truncate text-gray-900">{{ file.original_name }}</h4>
+            <p class="text-xs text-gray-500 mt-0.5">
+              {{ file.size|filesizeformat }} · {{ file.uploaded_at|date:"d.m.Y H:i" }}
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 flex justify-end gap-2">
+          <a href="{% url 'download_file' file.pk %}" class="text-gray-500 hover:text-gold" title="Скачать">
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </a>
+          <form method="post" action="{% url 'delete_file' file.pk %}" class="inline" 
+                onsubmit="return confirm('Удалить файл?')">
+            {% csrf_token %}
+            <button type="submit" class="text-gray-500 hover:text-red-500" title="Удалить">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </form>
         </div>
       </div>
     {% endfor %}
   </div>
-{% else %}
+{% endif %}
+
+<!-- Пустое состояние -->
+{% if not folders and not files %}
   <div class="text-center py-12 text-gray-500">
     <i data-lucide="folder-open" class="w-12 h-12 mx-auto text-gray-300"></i>
-    <p class="mt-4">Нет файлов. Загрузите первый!</p>
+    <p class="mt-4">Папка пуста</p>
+    <p class="mt-2 text-sm">Загрузите файлы или создайте папки</p>
   </div>
 {% endif %}
+
+<!-- Модальное окно создания папки -->
+<div id="folderModal" class="hidden rounded-lg border border-gray-200 p-6 bg-white shadow-xl max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+  <h3 class="text-xl font-bold mb-4">Создать папку</h3>
+  <form method="post" action="{% url 'create_folder' %}">
+    {% csrf_token %}
+    <input type="hidden" name="path" value="{{ current_path }}">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Имя папки</label>
+      <input type="text" name="name" required 
+             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:outline-none">
+    </div>
+    <div class="flex gap-3">
+      <button type="submit" class="bg-black text-gold px-4 py-2 rounded-lg hover:bg-gray-900">
+        Создать
+      </button>
+      <button type="button" onclick="closeCreateFolderModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        Отмена
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function showCreateFolderModal() {
+  document.getElementById('folderModal').classList.remove('hidden');
+}
+
+function closeCreateFolderModal() {
+  document.getElementById('folderModal').classList.add('hidden');
+}
+
+// Закрытие по клику вне
+document.getElementById('folderModal').addEventListener('click', (e) => {
+  if (e.target.id === 'folderModal') {
+    closeCreateFolderModal();
+  }
+});
+
+// Навигация по папкам
+document.querySelectorAll('.folder-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const path = item.getAttribute('data-path');
+    window.location.href = "{% url 'file_list' %}" + (path ? "?path=" + encodeURIComponent(path) : "");
+  });
+});
+
+// Инициализация иконок
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+});
+</script>
 {% endblock %}

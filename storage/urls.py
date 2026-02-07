@@ -6,5 +6,5 @@ urlpatterns = [
     path('upload/', views.upload_file, name='upload_file'),
     path('download/<int:pk>/', views.download_file, name='download_file'),
     path('delete/<int:pk>/', views.delete_file, name='delete_file'),
-    # path('toggle-public/<int:pk>/', views.toggle_public, name='toggle_public'),
+    path('create-folder/', views.create_folder, name='create_folder'),
 ]

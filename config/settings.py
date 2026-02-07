@@ -115,11 +115,10 @@ AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = True
 AWS_S3_FILE_OVERWRITE = False
 
-# AWS_S3_CUSTOM_DOMAIN = f"localhost:9000/{AWS_STORAGE_BUCKET_NAME}"
-
 LOGOUT_REDIRECT_URL = 'login'
+LOGIN_URL = 'login'
 
-if os.getenv('DEBUG', 'True').lower() == 'true':
+if DEBUG:
     ALLOWED_HOSTS = ['*']
 else:
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
