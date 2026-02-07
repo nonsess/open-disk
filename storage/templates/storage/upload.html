@@ -3,59 +3,63 @@
 {% block title %}Загрузить файлы{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-  <h2 class="text-2xl font-bold mb-6">Загрузить файлы или папки</h2>
+<div class="container mx-auto">
+  <nav class="flex items-center text-sm text-gray-400" aria-label="Навигация">
+    <a href="{% url 'file_list' %}" class="text-gray-900 hover:text-gold-dark flex items-center">
+      <i data-lucide="home" class="w-4 h-4 mr-1"></i>
+      Главная
+    </a>
+  </nav>
 
-  <form method="post" enctype="multipart/form-data" class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
-        id="uploadForm">
-    {% csrf_token %}
-
-    <!-- Скрытый file input -->
-    <input 
-      type="file" 
-      id="fileInput" 
-      name="file"
-      webkitdirectory mozdirectory msdirectory odirectory directory multiple
-      class="hidden"
-    >
-
-    <!-- Drag & Drop зона -->
-    <div 
-      id="dropZone"
-      class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-    >
-      <i data-lucide="upload" class="w-10 h-10 text-gray-400 mx-auto"></i>
-      <p class="mt-2 text-gray-700">
-        Перетащите файлы или папки сюда<br>
-        <span class="text-sm text-gray-500">или нажмите, чтобы выбрать</span>
-      </p>
-    </div>
-
-    <!-- Список файлов -->
-    <div id="fileList" class="mt-4 space-y-2 min-h-[20px]"></div>
-
-    <!-- Скрытые поля для путей -->
-    <div id="hiddenInputs"></div>
-
-    <div class="flex gap-3 mt-6">
-      <button 
-        type="submit" 
-        id="uploadBtn" 
-        class="bg-black text-gold px-5 py-2.5 rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2 disabled:opacity-50"
-        disabled
+  <div class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold mb-6">Загрузить файлы или папки</h2>
+  
+    <form method="post" enctype="multipart/form-data" class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
+          id="uploadForm">
+      {% csrf_token %}
+  
+      <input 
+        type="file" 
+        id="fileInput" 
+        name="file"
+        webkitdirectory mozdirectory msdirectory odirectory directory multiple
+        class="hidden"
       >
-        <i data-lucide="upload"></i>
-        Загрузить
-      </button>
-      <a href="{% url 'file_list' %}" class="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">
-        Отмена
-      </a>
-    </div>
-  </form>
+  
+      <div 
+        id="dropZone"
+        class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+      >
+        <i data-lucide="upload" class="w-10 h-10 text-gray-400 mx-auto"></i>
+        <p class="mt-2 text-gray-700">
+          Перетащите файлы или папки сюда<br>
+          <span class="text-sm text-gray-500">или нажмите, чтобы выбрать</span>
+        </p>
+      </div>
+  
+      <div id="fileList" class="mt-4 space-y-2 min-h-[20px]"></div>
+  
+      <div id="hiddenInputs"></div>
+  
+      <div class="flex gap-3 mt-6">
+        <button 
+          type="submit" 
+          id="uploadBtn" 
+          class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-4 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+          disabled
+        >
+          <i data-lucide="upload"></i>
+          Загрузить
+        </button>
+        <a href="{% url 'file_list' %}" class="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">
+          Назад
+        </a>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script>
-// Обработка выбора файлов (клик или drag & drop)
 function handleFiles(files) {
   const fileList = document.getElementById('fileList');
   const hiddenInputs = document.getElementById('hiddenInputs');
@@ -70,16 +74,13 @@ function handleFiles(files) {
   }
 
   Array.from(files).forEach(file => {
-    // Получаем относительный путь (для папок)
     const relPath = file.webkitRelativePath || file.name;
 
-    // Отображение
     const div = document.createElement('div');
     div.className = "text-sm text-gray-700 truncate";
     div.textContent = relPath;
     fileList.appendChild(div);
 
-    // Скрытое поле
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'relative_path';
@@ -90,17 +91,14 @@ function handleFiles(files) {
   uploadBtn.disabled = false;
 }
 
-// Клик по зоне → открыть выбор файлов
 document.getElementById('dropZone').addEventListener('click', () => {
   document.getElementById('fileInput').click();
 });
 
-// Выбор через кнопку "Обзор"
 document.getElementById('fileInput').addEventListener('change', (e) => {
   handleFiles(e.target.files);
 });
 
-// Drag & Drop
 const dropZone = document.getElementById('dropZone');
 
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -125,7 +123,6 @@ const dropZone = document.getElementById('dropZone');
 dropZone.addEventListener('drop', e => {
   const files = e.dataTransfer.files;
   handleFiles(files);
-  // Очищаем input, чтобы change сработал при повторном выборе
   document.getElementById('fileInput').value = '';
 });
 </script>

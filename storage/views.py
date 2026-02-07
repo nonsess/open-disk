@@ -19,11 +19,17 @@ def file_list(request: HttpRequest) -> HttpResponse:
         current_path=current_path
     )
     
+    current_folder_name = ""
+    if current_path:
+        parts = current_path.split('/')
+        current_folder_name = parts[-1] if parts else ""
+
     context = {
         'files': files,
         'folders': folders,
         'current_path': current_path,
         'breadcrumbs': breadcrumbs,
+        'current_folder_name': current_folder_name,
     }
     
     return render(request, 'storage/file_list.html', context)
@@ -36,16 +42,14 @@ def create_folder(request: HttpRequest) -> HttpResponse:
     
     name = request.POST.get('name', '').strip()
     path = request.POST.get('path', '').strip()
-    
+
     success, message, _ = StorageService.create_folder(
         user=request.user,
         name=name,
         path=path
     )
     
-    if success:
-        messages.success(request, message)
-    else:
+    if not success:
         messages.error(request, message)
     
     return _redirect_to_path(path)
@@ -69,13 +73,7 @@ def upload_file(request: HttpRequest) -> HttpResponse:
         files=files,
         relative_paths=relative_paths
     )
-    
-    if uploaded_count > 0:
-        messages.success(
-            request, 
-            f"Успешно загружено {uploaded_count} файл(ов)!"
-        )
-    
+        
     if errors:
         error_display = "; ".join(errors[:5])
         if len(errors) > 5:
@@ -102,9 +100,7 @@ def delete_file(request: HttpRequest, pk: int) -> HttpResponseRedirect:
     
     success, message = StorageService.delete_file(request.user, pk)
     
-    if success:
-        messages.success(request, message)
-    else:
+    if not success:
         messages.error(request, message)
     
     return redirect('file_list')
@@ -126,9 +122,7 @@ def delete_folder(request: HttpRequest) -> HttpResponseRedirect:
         folder_path=path
     )
     
-    if success:
-        messages.success(request, message)
-    else:
+    if not success:
         messages.error(request, message)
     
     return _redirect_to_path(redirect_path)     

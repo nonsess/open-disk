@@ -50,8 +50,8 @@ class StorageService:
                 'path': accumulated
             })
         
-        return breadcrumbs
-    
+        return breadcrumbs[:-1]
+
     @staticmethod
     def create_folder(
         user: User, 
@@ -60,28 +60,38 @@ class StorageService:
     ) -> Tuple[bool, str, Optional[Folder]]:
         try:
             Folder._validate_name(name)
+            
             if path:
                 Folder._validate_path(path)
-                        
-            full_path = f"{path}/{name}" if path else name
+            
+            existing_folder = Folder.objects.filter(
+                owner=user,
+                path=path,
+                name=name
+            ).first()
+            
+            if existing_folder:
+                return False, "Папка с таким названием уже существует.", None
+            
+            minio_full_path = f"{path}/{name}" if path else name
             
             minio_client = MinIOClient()
-            success, message = minio_client.create_folder(user, full_path)
+            success, message = minio_client.create_folder(user, minio_full_path)
             
             if not success:
-                return False, message, None
+                return False, f"Ошибка создания папки в хранилище: {message}", None
             
             folder = Folder.objects.create(
                 owner=user,
                 name=name,
-                path=full_path
+                path=path
             )
-            
+                        
             return True, f"Папка '{name}' успешно создана.", folder
             
         except ValidationError as e:
             return False, str(e), None
-        except IntegrityError:
+        except IntegrityError as e:
             return False, "Папка с таким названием уже существует.", None
         except Exception as e:
             return False, f"Ошибка создания папки: {str(e)}", None
@@ -190,6 +200,18 @@ class StorageService:
                 else:
                     redirect_path = ''
             
+            if folder_path:
+                path_parts = folder_path.split('/')
+                if len(path_parts) > 1:
+                    db_path = '/'.join(path_parts[:-1])
+                    db_name = path_parts[-1]
+                else:
+                    db_path = ''
+                    db_name = folder_path
+            else:
+                db_path = ''
+                db_name = ''
+            
             files_query = StoredFile.objects.filter(
                 owner=user,
                 path=folder_path
@@ -207,24 +229,16 @@ class StorageService:
             
             subfolders_query = Folder.objects.filter(
                 owner=user,
-                path=folder_path
+                path__startswith=f"{folder_path}/" if folder_path else ""
             )
             subfolders_count = subfolders_query.count()
             subfolders_query.delete()
             
             if folder_path:
-                if '/' in folder_path:
-                    parts = folder_path.split('/')
-                    parent_path = '/'.join(parts[:-1])
-                    current_folder_name = parts[-1]
-                else:
-                    parent_path = ''
-                    current_folder_name = folder_path
-                
                 Folder.objects.filter(
                     owner=user,
-                    path=parent_path,
-                    name=current_folder_name
+                    path=db_path,
+                    name=db_name
                 ).delete()
             
             minio_client = MinIOClient()
@@ -244,7 +258,7 @@ class StorageService:
             return True, message, redirect_path
             
         except Exception as e:
-            return False, f"Ошибка при удаления папки: {str(e)}", ""
+            return False, f"Ошибка при удалении папки: {str(e)}", ""
 
     @staticmethod
     def validate_upload_data(
