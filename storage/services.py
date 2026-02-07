@@ -62,11 +62,8 @@ class StorageService:
             Folder._validate_name(name)
             if path:
                 Folder._validate_path(path)
-            
-            normalized_path = MinIOClient.normalize_path(path)
-            
-            full_path = f"{normalized_path}/{name}" if normalized_path else name
-            full_path = MinIOClient.normalize_path(full_path)
+                        
+            full_path = f"{path}/{name}" if path else name
             
             minio_client = MinIOClient()
             success, message = minio_client.create_folder(user, full_path)
@@ -77,7 +74,7 @@ class StorageService:
             folder = Folder.objects.create(
                 owner=user,
                 name=name,
-                path=normalized_path
+                path=full_path
             )
             
             return True, f"Папка '{name}' успешно создана.", folder
@@ -145,22 +142,6 @@ class StorageService:
     
     @staticmethod
     def _create_missing_folders(user: User, folder_paths: Set[str]) -> None:
-        for full_folder_path in folder_paths:
-            if '/' in full_folder_path:
-                parent_path = '/'.join(full_folder_path.split('/')[:-1])
-                folder_name = full_folder_path.split('/')[-1]
-            else:
-                parent_path = ''
-                folder_name = full_folder_path
-            
-            Folder.objects.get_or_create(
-                owner=user,
-                path=parent_path,
-                name=folder_name
-            )
-
-    @staticmethod
-    def _create_folders_from_paths(user: User, folder_paths: Set[str]) -> None:
         for full_folder_path in folder_paths:
             if '/' in full_folder_path:
                 parent_path = '/'.join(full_folder_path.split('/')[:-1])
