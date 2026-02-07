@@ -10,7 +10,7 @@ def signup_view(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, "Добро пожаловать! Аккаунт создан.")
+            messages.success(request, f"Добро пожаловать, {user.username}!")
             return redirect('file_list')
         else:
             messages.error(request, "Исправьте ошибки в форме.")
