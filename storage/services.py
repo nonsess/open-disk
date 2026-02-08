@@ -14,87 +14,169 @@ class StorageService:
     def get_folder_contents(
         user: User, 
         current_path: str = ""
-    ) -> Tuple[List[StoredFile], List[Folder], List[Dict[str, str]]]:
+    ) -> Tuple[List[StoredFile], List[Folder], List[Dict[str, str]], Optional[Folder]]:
+        current_folder = None
+        if current_path:
+            current_folder = Folder.find_by_path(user, current_path)
+            if not current_folder:
+                return [], [], [], None
+        
         files = StoredFile.objects.filter(
             owner=user,
-            path=current_path
+            folder=current_folder
         ).order_by('original_name')
         
         folders = Folder.objects.filter(
             owner=user,
-            path=current_path
+            parent=current_folder
         ).order_by('name')
         
-        breadcrumbs = StorageService._build_breadcrumbs(current_path)
-        
-        return files, folders, breadcrumbs
-    
-    @staticmethod
-    def _build_breadcrumbs(current_path: str) -> List[Dict[str, str]]:
         breadcrumbs = [{'name': 'Главная', 'path': ''}]
         
-        if not current_path:
-            return breadcrumbs
-        
-        parts = current_path.split('/')
-        accumulated = ''
-        
-        for part in parts:
-            if accumulated:
-                accumulated += '/' + part
-            else:
-                accumulated = part
-            
+        if current_folder:
+            ancestors = current_folder.get_ancestors()
+            for ancestor in ancestors:
+                breadcrumbs.append({
+                    'name': ancestor.name,
+                    'path': ancestor.full_path
+                })
             breadcrumbs.append({
-                'name': part,
-                'path': accumulated
+                'name': current_folder.name,
+                'path': current_folder.full_path
             })
         
-        return breadcrumbs[:-1]
-
+        return files, folders, breadcrumbs, current_folder
+    
     @staticmethod
     def create_folder(
         user: User, 
         name: str, 
-        path: str = ""
+        parent_path: str = ""
     ) -> Tuple[bool, str, Optional[Folder]]:
         try:
             Folder._validate_name(name)
             
-            if path:
-                Folder._validate_path(path)
+            parent = None
+            if parent_path:
+                parent = Folder.find_by_path(user, parent_path)
+                if not parent:
+                    return False, "Родительская папка не найдена", None
             
-            existing_folder = Folder.objects.filter(
+            existing = Folder.objects.filter(
                 owner=user,
-                path=path,
+                parent=parent,
                 name=name
             ).first()
             
-            if existing_folder:
-                return False, "Папка с таким названием уже существует.", None
-            
-            minio_full_path = f"{path}/{name}" if path else name
+            if existing:
+                return False, "Папка с таким названием уже существует", None
             
             minio_client = MinIOClient()
-            success, message = minio_client.create_folder(user, minio_full_path)
+            
+            full_path = name
+            if parent:
+                full_path = f"{parent.full_path}/{name}"
+            
+            success, message = minio_client.create_folder(user, full_path)
             
             if not success:
-                return False, f"Ошибка создания папки в хранилище: {message}", None
+                return False, message, None
             
             folder = Folder.objects.create(
                 owner=user,
-                name=name,
-                path=path
+                parent=parent,
+                name=name
             )
-                        
-            return True, f"Папка '{name}' успешно создана.", folder
+            
+            return True, f"Папка '{name}' успешно создана", folder
             
         except ValidationError as e:
             return False, str(e), None
-        except IntegrityError as e:
+        except IntegrityError:
             return False, "Папка с таким названием уже существует.", None
         except Exception as e:
             return False, f"Ошибка создания папки: {str(e)}", None
+    
+    @staticmethod
+    @transaction.atomic
+    def rename_folder(
+        user: User,
+        folder_id: int,
+        new_name: str
+    ) -> Tuple[bool, str, Optional[Folder]]:
+        try:
+            try:
+                folder = Folder.objects.get(pk=folder_id, owner=user)
+            except Folder.DoesNotExist:
+                return False, "Папка не найдена", None
+            
+            old_name = folder.name
+            old_full_path = folder.full_path
+            
+            minio_client = MinIOClient()
+            
+            temp_new_name = folder.name
+            folder.name = new_name
+            new_full_path = folder.full_path
+            folder.name = temp_new_name
+            
+            success, message = minio_client.rename_folder(
+                user=user,
+                old_path=old_full_path,
+                new_name=new_name
+            )
+            
+            if not success:
+                return False, message, None
+            
+            result = folder.rename(new_name)
+            
+            return True, f"Папка '{old_name}' переименована в '{new_name}'", folder
+            
+        except ValidationError as e:
+            return False, str(e), None
+        except Exception as e:
+            return False, f"Ошибка переименования папки: {str(e)}", None
+    
+    @staticmethod
+    @transaction.atomic
+    def delete_folder(
+        user: User,
+        folder_id: int
+    ) -> Tuple[bool, str, str]:
+        try:
+            try:
+                folder = Folder.objects.get(pk=folder_id, owner=user)
+            except Folder.DoesNotExist:
+                return False, "Папка не найдена", ""
+            
+            folder_name = folder.name
+            folder_path = folder.full_path
+            
+            redirect_path = ""
+            if folder.parent:
+                redirect_path = folder.parent.full_path
+            
+            minio_client = MinIOClient()
+            minio_success, minio_message = minio_client.delete_folder(
+                user, folder_path
+            )
+            
+            if not minio_success:
+                return False, f"Ошибка при удалении из хранилища: {minio_message}", redirect_path
+            
+            result = Folder.delete_with_content(folder_id, user)
+            
+            message = f"Папка '{folder_name}' удалена."
+            if result['files_deleted'] > 0:
+                message += f" Удалено {result['files_deleted']} файлов."
+            if result['folders_deleted'] > 1:
+                message += f" Удалено {result['folders_deleted'] - 1} подпапок."
+            
+            return True, message, redirect_path
+            
+        except Exception as e:
+            return False, f"Ошибка при удалении папки: {str(e)}", ""
     
     @staticmethod
     def upload_files(
@@ -104,7 +186,6 @@ class StorageService:
     ) -> Tuple[int, List[str]]:
         uploaded_count = 0
         errors: List[str] = []
-        folder_paths: Set[str] = set()
         
         for uploaded_file, rel_path in zip(files, relative_paths):
             try:
@@ -115,29 +196,30 @@ class StorageService:
                 
                 StoredFile._validate_filename(file_name)
                 
+                folder = None
                 if folder_path:
-                    Folder._validate_path(folder_path)
+                    folder = Folder.find_or_create_by_path(user, folder_path)
+                
+                existing_file = StoredFile.objects.filter(
+                    owner=user,
+                    folder=folder,
+                    original_name=file_name
+                ).first()
+                
+                if existing_file:
+                    errors.append(f"{rel_path}: Файл с таким именем уже существует")
+                    continue
                 
                 stored_file = StoredFile(
                     owner=user,
+                    folder=folder,
                     original_name=file_name,
                     size=uploaded_file.size,
-                    mime_type=uploaded_file.content_type or 'application/octet-stream',
-                    path=folder_path
+                    mime_type=uploaded_file.content_type or 'application/octet-stream'
                 )
                 
                 full_path = f"user-{user.id}-files/{rel_path}"
                 stored_file.file.save(full_path, uploaded_file, save=True)
-                
-                if folder_path:
-                    parts = folder_path.split('/')
-                    accumulated = ''
-                    for part in parts:
-                        if accumulated:
-                            accumulated += '/' + part
-                        else:
-                            accumulated = part
-                        folder_paths.add(accumulated)
                 
                 uploaded_count += 1
                 
@@ -146,25 +228,7 @@ class StorageService:
             except Exception as e:
                 errors.append(f"{rel_path}: {str(e)}")
         
-        StorageService._create_missing_folders(user, folder_paths)
-        
         return uploaded_count, errors
-    
-    @staticmethod
-    def _create_missing_folders(user: User, folder_paths: Set[str]) -> None:
-        for full_folder_path in folder_paths:
-            if '/' in full_folder_path:
-                parent_path = '/'.join(full_folder_path.split('/')[:-1])
-                folder_name = full_folder_path.split('/')[-1]
-            else:
-                parent_path = ''
-                folder_name = full_folder_path
-            
-            Folder.objects.get_or_create(
-                owner=user,
-                path=parent_path,
-                name=folder_name
-            )
     
     @staticmethod
     def delete_file(user: User, file_id: int) -> Tuple[bool, str]:
@@ -184,81 +248,41 @@ class StorageService:
     
     @staticmethod
     @transaction.atomic
-    def delete_folder(user: User, folder_path: str) -> Tuple[bool, str, str]:
+    def rename_file(
+        user: User,
+        file_id: int,
+        new_name: str
+    ) -> Tuple[bool, str, Optional[StoredFile]]:
         try:
-            folder_path = MinIOClient.normalize_path(folder_path)
+            try:
+                file_obj = StoredFile.objects.get(pk=file_id, owner=user)
+            except StoredFile.DoesNotExist:
+                return False, "Файл не найден", None
             
-            if not folder_path:
-                folder_name = "корневую папку"
-                redirect_path = ''
-            else:
-                parts = folder_path.split('/')
-                folder_name = parts[-1] if parts else "папку"
-                
-                if len(parts) > 1:
-                    redirect_path = '/'.join(parts[:-1])
-                else:
-                    redirect_path = ''
-            
-            if folder_path:
-                path_parts = folder_path.split('/')
-                if len(path_parts) > 1:
-                    db_path = '/'.join(path_parts[:-1])
-                    db_name = path_parts[-1]
-                else:
-                    db_path = ''
-                    db_name = folder_path
-            else:
-                db_path = ''
-                db_name = ''
-            
-            files_query = StoredFile.objects.filter(
-                owner=user,
-                path=folder_path
-            )
-            
-            files_deleted_count = files_query.count()
-            
-            for file_obj in files_query:
-                try:
-                    file_obj.file.delete(save=False)
-                except Exception:
-                    pass
-            
-            files_query.delete()
-            
-            subfolders_query = Folder.objects.filter(
-                owner=user,
-                path__startswith=f"{folder_path}/" if folder_path else ""
-            )
-            subfolders_count = subfolders_query.count()
-            subfolders_query.delete()
-            
-            if folder_path:
-                Folder.objects.filter(
-                    owner=user,
-                    path=db_path,
-                    name=db_name
-                ).delete()
+            old_name = file_obj.original_name
+            old_full_path = file_obj.full_path
             
             minio_client = MinIOClient()
-            minio_success, minio_message = minio_client.delete_folder(
-                user, folder_path
+            
+            old_minio_path = f"user-{user.id}-files/{old_full_path}"
+            new_minio_path = f"user-{user.id}-files/{file_obj.folder.full_path}/{new_name}" if file_obj.folder else f"user-{user.id}-files/{new_name}"
+            
+            success, message = minio_client.rename_object(
+                old_key=old_minio_path,
+                new_key=new_minio_path
             )
             
-            message = f"Папка '{folder_name}' удалена."
-            if files_deleted_count > 0:
-                message += f" Удалено {files_deleted_count} файлов."
-            if subfolders_count > 0:
-                message += f" Удалено {subfolders_count} подпапок."
+            if not success:
+                return False, message, None
             
-            if not minio_success:
-                message += f" Внимание при удалении из хранилища: {minio_message}"
+            result = file_obj.rename(new_name)
             
-            return True, message, redirect_path
+            return True, f"Файл '{old_name}' переименован в '{new_name}'", file_obj
             
+        except ValidationError as e:
+            return False, str(e), None
         except Exception as e:
-            return False, f"Ошибка при удалении папки: {str(e)}", ""
+            return False, f"Ошибка переименования файла: {str(e)}", None
 
     @staticmethod
     def validate_upload_data(
@@ -272,3 +296,14 @@ class StorageService:
             return "Ошибка при загрузке структуры папок."
         
         return None
+    
+    @staticmethod
+    def find_folder_by_path(user: User, path: str) -> Optional[Folder]:
+        return Folder.find_by_path(user, path)
+    
+    @staticmethod
+    def get_folder_by_id(user: User, folder_id: int) -> Optional[Folder]:
+        try:
+            return Folder.objects.get(pk=folder_id, owner=user)
+        except Folder.DoesNotExist:
+            return None

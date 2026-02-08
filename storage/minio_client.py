@@ -29,9 +29,7 @@ class MinIOClient:
             return ""
         
         path = path.strip()
-        
         path = path.replace('\\', '/')
-
         path = path.strip('/')
         
         while '//' in path:
@@ -84,8 +82,9 @@ class MinIOClient:
                     'x-amz-meta-folder': 'true',
                     'x-amz-meta-owner-id': str(user.id),
                 }
-            )            
-            return True, f"Папка создана: {minio_key}"
+            )
+            
+            return True, f"Папка создана"
             
         except ClientError as e:
             error_code = e.response['Error']['Code']
@@ -98,17 +97,69 @@ class MinIOClient:
         except Exception as e:
             return False, f"Неожиданная ошибка: {str(e)}"
     
-    def _folder_exists_in_minio(self, folder_key: str) -> bool:
+    def rename_folder(self, user: User, old_path: str, new_name: str) -> tuple[bool, str]:
         try:
-            self.client.head_object(
-                Bucket=self.bucket,
-                Key=folder_key
-            )
-            return True
-        except ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                return False
-            raise
+            old_path = self.normalize_path(old_path)
+            
+            if not old_path:
+                return False, "Не указан путь к папке"
+            
+            parts = old_path.split('/')
+            if len(parts) == 0:
+                return False, "Неверный путь к папке"
+            
+            parent_path = '/'.join(parts[:-1]) if len(parts) > 1 else ""
+            
+            new_path = f"{parent_path}/{new_name}" if parent_path else new_name
+            
+            old_prefix = f"user-{user.id}-files/{old_path}/"
+            new_prefix = f"user-{user.id}-files/{new_path}/"
+            
+            objects_to_rename = []
+            
+            paginator = self.client.get_paginator('list_objects_v2')
+            for page in paginator.paginate(Bucket=self.bucket, Prefix=old_prefix):
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        objects_to_rename.append(obj['Key'])
+            
+            if not objects_to_rename:
+                self.client.put_object(
+                    Bucket=self.bucket,
+                    Key=new_prefix,
+                    Body=b'',
+                    ContentLength=0,
+                    ContentType='application/x-directory'
+                )
+                
+                try:
+                    self.client.delete_object(Bucket=self.bucket, Key=old_prefix)
+                except:
+                    pass
+                
+                return True, "Папка переименована"
+            
+            for old_key in objects_to_rename:
+                new_key = old_key.replace(old_prefix, new_prefix)
+                
+                copy_source = {'Bucket': self.bucket, 'Key': old_key}
+                self.client.copy_object(
+                    Bucket=self.bucket,
+                    CopySource=copy_source,
+                    Key=new_key
+                )
+                
+                self.client.delete_object(Bucket=self.bucket, Key=old_key)
+            
+            try:
+                self.client.delete_object(Bucket=self.bucket, Key=old_prefix)
+            except:
+                pass
+            
+            return True, "Папка и её содержимое переименованы"
+            
+        except Exception as e:
+            return False, f"Ошибка переименования папки в MinIO: {str(e)}"
     
     def delete_folder(self, user: User, folder_path: str) -> tuple[bool, str]:
         try:
@@ -139,3 +190,45 @@ class MinIOClient:
             
         except Exception as e:
             return False, f"Ошибка при удалении папки: {str(e)}"
+    
+    def rename_object(self, old_key: str, new_key: str) -> tuple[bool, str]:
+        try:
+            try:
+                self.client.head_object(Bucket=self.bucket, Key=old_key)
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    return False, "Файл не найден в хранилище"
+                raise
+            
+            try:
+                self.client.head_object(Bucket=self.bucket, Key=new_key)
+                return False, "Файл с таким именем уже существует"
+            except ClientError as e:
+                if e.response['Error']['Code'] != '404':
+                    raise
+            
+            copy_source = {'Bucket': self.bucket, 'Key': old_key}
+            self.client.copy_object(
+                Bucket=self.bucket,
+                CopySource=copy_source,
+                Key=new_key
+            )
+            
+            self.client.delete_object(Bucket=self.bucket, Key=old_key)
+            
+            return True, "Файл переименован"
+            
+        except Exception as e:
+            return False, f"Ошибка переименования файла в MinIO: {str(e)}"
+    
+    def _folder_exists_in_minio(self, folder_key: str) -> bool:
+        try:
+            self.client.head_object(
+                Bucket=self.bucket,
+                Key=folder_key
+            )
+            return True
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                return False
+            raise
