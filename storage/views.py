@@ -1,38 +1,124 @@
-from django.urls import reverse
-from django.contrib import messages
-from urllib.parse import quote, unquote
-from django.contrib.auth.decorators import login_required
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.urls import reverse
+from urllib.parse import quote
 
 from storage.models import StoredFile
 from storage.services import StorageService
 
 
+def _redirect_to_path(path: str) -> HttpResponseRedirect:
+    url = reverse('file_list')
+    if path:
+        url += f"?path={quote(path)}"
+    return redirect(url)
+
+
 @login_required
 def file_list(request: HttpRequest) -> HttpResponse:
-    raw_path = request.GET.get('path', '')
-    current_path = unquote(raw_path).lstrip('/') if raw_path else ''
+    current_path = request.GET.get('path', '').strip()
     
-    files, folders, breadcrumbs = StorageService.get_folder_contents(
-        user=request.user,
-        current_path=current_path
+    files, folders, breadcrumbs, current_folder = StorageService.get_folder_contents(
+        request.user, current_path
     )
     
     current_folder_name = ""
-    if current_path:
-        parts = current_path.split('/')
-        current_folder_name = parts[-1] if parts else ""
-
-    context = {
+    if current_folder:
+        current_folder_name = current_folder.name
+    
+    return render(request, 'storage/file_list.html', {
         'files': files,
         'folders': folders,
-        'current_path': current_path,
         'breadcrumbs': breadcrumbs,
+        'current_path': current_path,
         'current_folder_name': current_folder_name,
-    }
+        'current_folder': current_folder,
+    })
+
+
+@login_required
+def upload_file(request: HttpRequest) -> HttpResponse:
+    if request.method == 'POST':
+        files = request.FILES.getlist('files')
+        relative_paths = request.POST.getlist('relative_paths')
+        
+        error = StorageService.validate_upload_data(files, relative_paths)
+        if error:
+            messages.error(request, error)
+            return redirect('upload_file')
+        
+        uploaded_count, errors = StorageService.upload_files(
+            request.user, files, relative_paths
+        )
+        
+        if uploaded_count > 0:
+            messages.success(request, f'Загружено файлов: {uploaded_count}')
+        
+        for error in errors:
+            messages.error(request, error)
+        
+        return redirect('file_list')
     
-    return render(request, 'storage/file_list.html', context)
+    return render(request, 'storage/upload.html')
+
+
+@login_required
+def download_file(request: HttpRequest, pk: int) -> HttpResponse:
+    file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
+    
+    response = HttpResponse(file_obj.file, content_type=file_obj.mime_type)
+    response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+    return response
+
+
+@login_required
+def delete_file(request: HttpRequest, pk: int) -> HttpResponse:
+    if request.method == 'POST':
+        success, message = StorageService.delete_file(request.user, pk)
+        
+        if success:
+            messages.success(request, message)
+        else:
+            messages.error(request, message)
+    
+    file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
+    if file_obj.folder:
+        return _redirect_to_path(file_obj.folder.full_path)
+    return redirect('file_list')
+
+
+@login_required
+def rename_file(request: HttpRequest) -> HttpResponse:
+    if request.method != 'POST':
+        return redirect('file_list')
+    
+    file_id = request.POST.get('file_id', '').strip()
+    new_name = request.POST.get('new_name', '').strip()
+    
+    if not file_id or not new_name:
+        messages.error(request, 'Не указаны необходимые параметры')
+        return redirect('file_list')
+    
+    try:
+        file_id_int = int(file_id)
+    except ValueError:
+        messages.error(request, 'Неверный ID файла')
+        return redirect('file_list')
+    
+    success, message, file_obj = StorageService.rename_file(
+        user=request.user,
+        file_id=file_id_int,
+        new_name=new_name
+    )
+    
+    if not success:
+        messages.error(request, message)
+    
+    if file_obj and file_obj.folder:
+        return _redirect_to_path(file_obj.folder.full_path)
+    return redirect('file_list')
 
 
 @login_required
@@ -41,94 +127,84 @@ def create_folder(request: HttpRequest) -> HttpResponse:
         return redirect('file_list')
     
     name = request.POST.get('name', '').strip()
-    path = request.POST.get('path', '').strip()
-
-    success, message, _ = StorageService.create_folder(
+    parent_path = request.POST.get('path', '').strip()
+    
+    if not name:
+        messages.error(request, "Имя папки не может быть пустым")
+        return _redirect_to_path(parent_path)
+    
+    success, message, folder = StorageService.create_folder(
         user=request.user,
         name=name,
-        path=path
+        parent_path=parent_path
     )
     
     if not success:
         messages.error(request, message)
     
-    return _redirect_to_path(path)
+    return _redirect_to_path(parent_path)
 
 
 @login_required
-def upload_file(request: HttpRequest) -> HttpResponse:
+def rename_folder(request: HttpRequest) -> HttpResponse:
     if request.method != 'POST':
-        return render(request, 'storage/upload.html')
+        return redirect('file_list')
     
-    files = request.FILES.getlist('file')
-    relative_paths = request.POST.getlist('relative_path')
+    folder_id = request.POST.get('folder_id', '').strip()
+    new_name = request.POST.get('new_name', '').strip()
     
-    error_message = StorageService.validate_upload_data(files, relative_paths)
-    if error_message:
-        messages.error(request, error_message)
-        return render(request, 'storage/upload.html')
+    if not folder_id or not new_name:
+        messages.error(request, 'Не указаны необходимые параметры')
+        return redirect('file_list')
     
-    uploaded_count, errors = StorageService.upload_files(
+    try:
+        folder_id_int = int(folder_id)
+    except ValueError:
+        messages.error(request, 'Неверный ID папки')
+        return redirect('file_list')
+    
+    success, message, folder = StorageService.rename_folder(
         user=request.user,
-        files=files,
-        relative_paths=relative_paths
+        folder_id=folder_id_int,
+        new_name=new_name
     )
-        
-    if errors:
-        error_display = "; ".join(errors[:5])
-        if len(errors) > 5:
-            error_display += f" ... и ещё {len(errors) - 5} ошибок"
-        
-        messages.error(
-            request,
-            f"Ошибки при загрузке {len(errors)} файл(ов): {error_display}"
-        )
     
-    return redirect('file_list')
-    
-
-@login_required
-def download_file(request: HttpRequest, pk: int) -> HttpResponseRedirect:
-    file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
-    return redirect(file_obj.file.url)
-
-
-@login_required
-def delete_file(request: HttpRequest, pk: int) -> HttpResponseRedirect:
-    if request.method != 'POST':
+    if success:
+        if folder and folder.parent:
+            return _redirect_to_path(folder.parent.full_path)
         return redirect('file_list')
-    
-    success, message = StorageService.delete_file(request.user, pk)
-    
-    if not success:
+    else:
         messages.error(request, message)
-    
-    return redirect('file_list')
+        if folder:
+            return _redirect_to_path(folder.full_path)
+        return redirect('file_list')
 
 
 @login_required
-def delete_folder(request: HttpRequest) -> HttpResponseRedirect:
+def delete_folder(request: HttpRequest) -> HttpResponse:
     if request.method != 'POST':
         return redirect('file_list')
     
-    path = request.POST.get('path', '').strip()
-
-    if not path:
-        messages.error(request, "Не указана папка для удаления.")
+    folder_id = request.POST.get('folder_id', '').strip()
+    
+    if not folder_id:
+        messages.error(request, 'Не указан ID папки')
         return redirect('file_list')
-
+    
+    try:
+        folder_id_int = int(folder_id)
+    except ValueError:
+        messages.error(request, 'Неверный ID папки')
+        return redirect('file_list')
+    
     success, message, redirect_path = StorageService.delete_folder(
         user=request.user,
-        folder_path=path
+        folder_id=folder_id_int
     )
     
-    if not success:
+    if success:
+        messages.success(request, message)
+    else:
         messages.error(request, message)
     
-    return _redirect_to_path(redirect_path)     
-
-def _redirect_to_path(path: str) -> HttpResponseRedirect:
-    if path:
-        encoded_path = quote(path)
-        return redirect(f"{reverse('file_list')}?path={encoded_path}")
-    return redirect('file_list')
+    return _redirect_to_path(redirect_path)

@@ -70,7 +70,12 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
       {% if folders %}
         {% for folder in folders %}
-        <div class="group folder-item" data-folder-name="{{ folder.name }}" data-folder-path="{{ folder.full_path }}">
+        <div
+          class="group folder-item"
+          data-folder-id="{{ folder.pk }}"
+          data-folder-name="{{ folder.name }}"
+          data-folder-path="{{ folder.full_path }}"
+        >
           <a href="{% url 'file_list' %}?path={{ folder.full_path|urlencode }}" 
               class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
             <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
@@ -165,7 +170,7 @@
   </button>
 </div>
 
-<div id="folderContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px]">
+<div id="folderContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
   <button onclick="openSelectedFolder(); hideFolderContextMenu()" 
           class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
     <i data-lucide="folder-open" class="w-4 h-4 text-gray-500"></i>
@@ -183,17 +188,9 @@
     <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
     <span>Удалить</span>
   </button>
-  
-  <div class="border-t border-gray-200 my-1"></div>
-  
-  <button onclick="copyFolderPath(); hideFolderContextMenu()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
-    <i data-lucide="copy" class="w-4 h-4 text-gray-500"></i>
-    <span>Копировать путь</span>
-  </button>
 </div>
 
-<div id="fileContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px]">
+<div id="fileContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
   <button onclick="downloadSelectedFile(); hideFileContextMenu()" 
           class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
     <i data-lucide="download" class="w-4 h-4 text-gray-500"></i>
@@ -211,18 +208,10 @@
     <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
     <span>Удалить</span>
   </button>
-  
-  <div class="border-t border-gray-200 my-1"></div>
-  
-  <button onclick="copyFilePath(); hideFileContextMenu()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
-    <i data-lucide="copy" class="w-4 h-4 text-gray-500"></i>
-    <span>Копировать путь</span>
-  </button>
 </div>
 
 <div id="createFolderModal" class="modal hidden">
-  <div class="modal-content max-w-7xl">
+  <div class="modal-content max-w-md">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-xl font-bold text-gray-900">Создать папку</h3>
       <button onclick="closeModal('createFolderModal')" class="text-gray-400 hover:text-gray-600">
@@ -242,7 +231,7 @@
                id="folderNameInput"
                placeholder="Введите название папки"
                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
-               oninput="validateFolderName(this)">
+               oninput="validateFolderName(this, 'folderNameError')">
         <p id="folderNameError" class="mt-2 text-sm text-red-600 hidden"></p>
       </div>
       
@@ -254,6 +243,92 @@
         </button>
         <button type="button" 
                 onclick="closeModal('createFolderModal')"
+                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="renameFolderModal" class="modal hidden">
+  <div class="modal-content max-w-md">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Переименовать папку</h3>
+      <button onclick="closeModal('renameFolderModal')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
+    <form method="post" action="{% url 'rename_folder' %}" id="renameFolderForm">
+      {% csrf_token %}
+      <input type="hidden" name="folder_id" id="renameFolderId">
+      
+      <div class="mb-6">
+        <p class="text-gray-700 mb-4">Текущее имя: <span id="currentFolderName" class="font-semibold"></span></p>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Новое имя папки</label>
+          <input type="text" 
+                 name="new_name"
+                 id="newFolderNameInput"
+                 placeholder="Введите новое название"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
+                 oninput="validateFolderName(this, 'renameFolderError')">
+          <p id="renameFolderError" class="mt-2 text-sm text-red-600 hidden"></p>
+        </div>
+      </div>
+      
+      <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-all">
+          Переименовать
+        </button>
+        <button type="button" 
+                onclick="closeModal('renameFolderModal')"
+                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="renameFileModal" class="modal hidden">
+  <div class="modal-content max-w-md">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Переименовать файл</h3>
+      <button onclick="closeModal('renameFileModal')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
+    <form method="post" action="{% url 'rename_file' %}" id="renameFileForm">
+      {% csrf_token %}
+      <input type="hidden" name="file_id" id="renameFileId">
+      
+      <div class="mb-6">
+        <p class="text-gray-700 mb-4">Текущее имя: <span id="currentFileName" class="font-semibold"></span></p>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Новое имя файла</label>
+          <input type="text" 
+                 name="new_name"
+                 id="newFileNameInput"
+                 placeholder="Введите новое название"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
+                 oninput="validateFileName(this, 'renameFileError')">
+          <p id="renameFileError" class="mt-2 text-sm text-red-600 hidden"></p>
+        </div>
+      </div>
+      
+      <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-all">
+          Переименовать
+        </button>
+        <button type="button" 
+                onclick="closeModal('renameFileModal')"
                 class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
           Отмена
         </button>
@@ -305,7 +380,7 @@
     
     <form method="post" action="{% url 'delete_folder' %}" id="deleteSelectedFolderForm">
       {% csrf_token %}
-      <input type="hidden" name="path" id="selectedFolderPath">
+      <input type="hidden" name="folder_id" id="selectedFolderId">
       
       <div class="flex gap-3">
         <button type="submit"
@@ -321,6 +396,9 @@
     </form>
   </div>
 </div>
+
+<!-- Toast  -->
+<div id="toastContainer" class="fixed top-4 right-4 z-[1001] flex flex-col gap-2"></div>
 
 <style>
 .modal {
@@ -388,447 +466,646 @@
 .selected-item {
   background-color: rgba(59, 130, 246, 0.1) !important;
   border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  border-radius: 12px !important;
+}
+
+.toast {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid #059669;
+  animation: slideInRight 0.3s ease-out;
+  max-width: 300px;
+}
+
+.toast.error {
+  border-left-color: #dc2626;
+}
+
+.toast.success {
+  border-left-color: #059669;
+}
+
+.toast.info {
+  border-left-color: #2563eb;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 </style>
 
 <script>
 let selectedFolder = {
-  name: '',
-  path: ''
+    id: null,
+    name: null,
+    path: null,
+    element: null
 };
 
 let selectedFile = {
-  name: '',
-  id: ''
+    id: null,
+    name: null,
+    element: null
 };
 
 const ContextMenu = {
-  element: null,
-  isVisible: false,
-  
-  init: function() {
-    if (!this.element) {
-      this.element = document.getElementById('contextMenu');
-    }
+    element: null,
+    isVisible: false,
     
-    document.addEventListener('click', this.handleClick.bind(this));
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-  },
-  
-  show: function(x, y) {
-    if (!this.element) return;
+    init: function() {
+        this.element = document.getElementById('contextMenu');
+        document.addEventListener('click', this.handleClick.bind(this));
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+    },
     
-    this.element.classList.remove('hidden');
-    this.isVisible = true;
+    show: function(x, y) {
+        if (!this.element) return;
+        
+        this.element.classList.remove('hidden');
+        this.isVisible = true;
+        
+        const rect = this.element.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        let finalX = x;
+        let finalY = y;
+        
+        if (x + rect.width > viewportWidth) {
+            finalX = viewportWidth - rect.width - 10;
+        }
+        
+        if (y + rect.height > viewportHeight) {
+            finalY = viewportHeight - rect.height - 10;
+        }
+        
+        this.element.style.left = finalX + 'px';
+        this.element.style.top = finalY + 'px';
+    },
     
-    this.element.style.left = x + 'px';
-    this.element.style.top = y + 'px';
-  },
-  
-  hide: function() {
-    if (this.element && this.isVisible) {
-      this.element.classList.add('hidden');
-      this.isVisible = false;
+    hide: function() {
+        if (this.element && this.isVisible) {
+            this.element.classList.add('hidden');
+            this.isVisible = false;
+        }
+    },
+    
+    handleClick: function(event) {
+        if (this.isVisible && !this.element.contains(event.target)) {
+            this.hide();
+        }
+    },
+    
+    handleKeyDown: function(event) {
+        if (event.key === 'Escape' && this.isVisible) {
+            this.hide();
+        }
     }
-  },
-  
-  handleClick: function(event) {
-    if (this.isVisible && !this.element.contains(event.target)) {
-      this.hide();
-    }
-  },
-  
-  handleKeyDown: function(event) {
-    if (event.key === 'Escape' && this.isVisible) {
-      this.hide();
-    }
-  }
 };
 
 const FolderContextMenu = {
-  element: null,
-  isVisible: false,
-  
-  init: function() {
-    if (!this.element) {
-      this.element = document.getElementById('folderContextMenu');
+    element: null,
+    isVisible: false,
+    
+    init: function() {
+        this.element = document.getElementById('folderContextMenu');
+        document.addEventListener('click', this.handleClick.bind(this));
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+    },
+    
+    show: function(x, y, folderElement) {
+        if (!this.element) return;
+        
+        selectedFolder.id = folderElement.getAttribute('data-folder-id');
+        selectedFolder.name = folderElement.getAttribute('data-folder-name');
+        selectedFolder.path = folderElement.getAttribute('data-folder-path');
+        selectedFolder.element = folderElement;
+        
+        document.querySelectorAll('.folder-item').forEach(item => {
+            item.classList.remove('selected-item');
+        });
+        
+        folderElement.classList.add('selected-item');
+        
+        this.element.classList.remove('hidden');
+        this.isVisible = true;
+        
+        const rect = this.element.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        let finalX = x;
+        let finalY = y;
+        
+        if (x + rect.width > viewportWidth) {
+            finalX = viewportWidth - rect.width - 10;
+        }
+        
+        if (y + rect.height > viewportHeight) {
+            finalY = viewportHeight - rect.height - 10;
+        }
+        
+        this.element.style.left = finalX + 'px';
+        this.element.style.top = finalY + 'px';
+    },
+    
+    hide: function() {
+        if (this.element && this.isVisible) {
+            this.element.classList.add('hidden');
+            this.isVisible = false;
+            
+            if (selectedFolder.element) {
+                selectedFolder.element.classList.remove('selected-item');
+            }
+        }
+    },
+    
+    handleClick: function(event) {
+        if (this.isVisible && !this.element.contains(event.target)) {
+            this.hide();
+        }
+    },
+    
+    handleKeyDown: function(event) {
+        if (event.key === 'Escape' && this.isVisible) {
+            this.hide();
+        }
     }
-    
-    document.addEventListener('click', this.handleClick.bind(this));
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-  },
-  
-  show: function(x, y, folderElement) {
-    if (!this.element) return;
-    
-    selectedFolder.name = folderElement.getAttribute('data-folder-name');
-    selectedFolder.path = folderElement.getAttribute('data-folder-path');
-    
-    document.querySelectorAll('.folder-item').forEach(item => {
-      item.classList.remove('selected-item');
-    });
-    
-    folderElement.classList.add('selected-item');
-    
-    this.element.classList.remove('hidden');
-    this.isVisible = true;
-    
-    const menuWidth = this.element.offsetWidth;
-    const menuHeight = this.element.offsetHeight;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    
-    let posX = x;
-    let posY = y;
-    
-    if (x + menuWidth > windowWidth) {
-      posX = windowWidth - menuWidth - 10;
-    }
-    
-    if (y + menuHeight > windowHeight) {
-      posY = windowHeight - menuHeight - 10;
-    }
-    
-    this.element.style.left = posX + 'px';
-    this.element.style.top = posY + 'px';
-  },
-  
-  hide: function() {
-    if (this.element && this.isVisible) {
-      this.element.classList.add('hidden');
-      this.isVisible = false;
-      
-      document.querySelectorAll('.folder-item').forEach(item => {
-        item.classList.remove('selected-item');
-      });
-    }
-  },
-  
-  handleClick: function(event) {
-    if (this.isVisible && !this.element.contains(event.target)) {
-      this.hide();
-    }
-  },
-  
-  handleKeyDown: function(event) {
-    if (event.key === 'Escape' && this.isVisible) {
-      this.hide();
-    }
-  }
 };
 
 const FileContextMenu = {
-  element: null,
-  isVisible: false,
-  
-  init: function() {
-    if (!this.element) {
-      this.element = document.getElementById('fileContextMenu');
+    element: null,
+    isVisible: false,
+    
+    init: function() {
+        this.element = document.getElementById('fileContextMenu');
+        document.addEventListener('click', this.handleClick.bind(this));
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+    },
+    
+    show: function(x, y, fileElement) {
+        if (!this.element) return;
+        
+        selectedFile.id = fileElement.getAttribute('data-file-id');
+        selectedFile.name = fileElement.getAttribute('data-file-name');
+        selectedFile.element = fileElement;
+        
+        document.querySelectorAll('.file-item').forEach(item => {
+            item.classList.remove('selected-item');
+        });
+        
+        fileElement.classList.add('selected-item');
+        
+        this.element.classList.remove('hidden');
+        this.isVisible = true;
+        
+        const rect = this.element.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        let finalX = x;
+        let finalY = y;
+        
+        if (x + rect.width > viewportWidth) {
+            finalX = viewportWidth - rect.width - 10;
+        }
+        
+        if (y + rect.height > viewportHeight) {
+            finalY = viewportHeight - rect.height - 10;
+        }
+        
+        this.element.style.left = finalX + 'px';
+        this.element.style.top = finalY + 'px';
+    },
+    
+    hide: function() {
+        if (this.element && this.isVisible) {
+            this.element.classList.add('hidden');
+            this.isVisible = false;
+            
+            if (selectedFile.element) {
+                selectedFile.element.classList.remove('selected-item');
+            }
+        }
+    },
+    
+    handleClick: function(event) {
+        if (this.isVisible && !this.element.contains(event.target)) {
+            this.hide();
+        }
+    },
+    
+    handleKeyDown: function(event) {
+        if (event.key === 'Escape' && this.isVisible) {
+            this.hide();
+        }
     }
-    
-    document.addEventListener('click', this.handleClick.bind(this));
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-  },
-  
-  show: function(x, y, fileElement) {
-    if (!this.element) return;
-    
-    selectedFile.name = fileElement.getAttribute('data-file-name');
-    selectedFile.id = fileElement.getAttribute('data-file-id');
-    
-    document.querySelectorAll('.file-item').forEach(item => {
-      item.classList.remove('selected-item');
-    });
-    
-    fileElement.classList.add('selected-item');
-    
-    this.element.classList.remove('hidden');
-    this.isVisible = true;
-    
-    const menuWidth = this.element.offsetWidth;
-    const menuHeight = this.element.offsetHeight;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    
-    let posX = x;
-    let posY = y;
-    
-    if (x + menuWidth > windowWidth) {
-      posX = windowWidth - menuWidth - 10;
-    }
-    
-    if (y + menuHeight > windowHeight) {
-      posY = windowHeight - menuHeight - 10;
-    }
-    
-    this.element.style.left = posX + 'px';
-    this.element.style.top = posY + 'px';
-  },
-  
-  hide: function() {
-    if (this.element && this.isVisible) {
-      this.element.classList.add('hidden');
-      this.isVisible = false;
-      
-      document.querySelectorAll('.file-item').forEach(item => {
-        item.classList.remove('selected-item');
-      });
-    }
-  },
-  
-  handleClick: function(event) {
-    if (this.isVisible && !this.element.contains(event.target)) {
-      this.hide();
-    }
-  },
-  
-  handleKeyDown: function(event) {
-    if (event.key === 'Escape' && this.isVisible) {
-      this.hide();
-    }
-  }
 };
 
 function openSelectedFolder() {
-  if (selectedFolder.path) {
-    window.location.href = `{% url 'file_list' %}?path=${encodeURIComponent(selectedFolder.path)}`;
-  }
+    if (selectedFolder.path) {
+        window.location.href = `{% url 'file_list' %}?path=${encodeURIComponent(selectedFolder.path)}`;
+    }
 }
 
 function renameSelectedFolder() {
-  alert(`Функция переименования папки "${selectedFolder.name}" будет реализована позже`);
-  hideFolderContextMenu();
+    if (selectedFolder.name && selectedFolder.id) {
+        document.getElementById('currentFolderName').textContent = selectedFolder.name;
+        document.getElementById('newFolderNameInput').value = selectedFolder.name;
+        document.getElementById('renameFolderId').value = selectedFolder.id;
+        document.getElementById('renameFolderError').classList.add('hidden');
+        
+        const modal = document.getElementById('renameFolderModal');
+        modal.classList.remove('hidden');
+        
+        setTimeout(() => {
+            document.getElementById('newFolderNameInput').focus();
+            document.getElementById('newFolderNameInput').select();
+        }, 100);
+        
+        hideFolderContextMenu();
+    }
 }
 
 function deleteSelectedFolder() {
-  if (selectedFolder.name && selectedFolder.path) {
-    document.getElementById('selectedFolderName').textContent = selectedFolder.name;
-    document.getElementById('selectedFolderPath').value = selectedFolder.path;
-    
-    const modal = document.getElementById('deleteSelectedFolderModal');
-    modal.classList.remove('hidden');
-    
-    hideFolderContextMenu();
-  }
+    if (selectedFolder.name && selectedFolder.id) {
+        document.getElementById('selectedFolderName').textContent = selectedFolder.name;
+        document.getElementById('selectedFolderId').value = selectedFolder.id;
+        
+        const modal = document.getElementById('deleteSelectedFolderModal');
+        modal.classList.remove('hidden');
+        
+        hideFolderContextMenu();
+    }
 }
 
 function copyFolderPath() {
-  if (selectedFolder.path) {
-    navigator.clipboard.writeText(selectedFolder.path)
-      .then(() => {
-        alert(`Путь скопирован: ${selectedFolder.path}`);
-      })
-      .catch(err => {
-        console.error('Ошибка при копировании: ', err);
-      });
-    
-    hideFolderContextMenu();
-  }
+    if (selectedFolder.path) {
+        navigator.clipboard.writeText(selectedFolder.path)
+            .then(() => {
+                showToast('Путь папки скопирован в буфер обмена', 'success');
+            })
+            .catch(err => {
+                console.error('Ошибка при копировании: ', err);
+                showToast('Не удалось скопировать путь', 'error');
+            });
+        
+        hideFolderContextMenu();
+    }
 }
 
 function downloadSelectedFile() {
-  if (selectedFile.id) {
-    window.location.href = `{% url 'download_file' 0 %}`.replace('0', selectedFile.id);
-  }
+    if (selectedFile.id) {
+        window.location.href = `{% url 'download_file' 0 %}`.replace('0', selectedFile.id);
+    }
 }
 
 function renameSelectedFile() {
-  alert(`Функция переименования файла "${selectedFile.name}" будет реализована позже`);
-  hideFileContextMenu();
+    if (selectedFile.name && selectedFile.id) {
+        document.getElementById('currentFileName').textContent = selectedFile.name;
+        document.getElementById('renameFileId').value = selectedFile.id;
+        
+        const oldName = selectedFile.name;
+        const nameWithoutExt = oldName.includes('.') ? oldName.substring(0, oldName.lastIndexOf('.')) : oldName;
+        document.getElementById('newFileNameInput').value = nameWithoutExt;
+        
+        document.getElementById('renameFileError').classList.add('hidden');
+        
+        const modal = document.getElementById('renameFileModal');
+        modal.classList.remove('hidden');
+        
+        setTimeout(() => {
+            document.getElementById('newFileNameInput').focus();
+            document.getElementById('newFileNameInput').select();
+        }, 100);
+        
+        hideFileContextMenu();
+    }
 }
 
 function deleteSelectedFile() {
-  if (selectedFile.name && selectedFile.id) {
-    if (confirm(`Удалить файл «${selectedFile.name}»?`)) {
-      const form = document.querySelector(`.file-item[data-file-id="${selectedFile.id}"] .delete-file-form`);
-      if (form) {
-        form.submit();
-      }
+    if (selectedFile.name && selectedFile.id) {
+        if (confirm(`Удалить файл «${selectedFile.name}»?`)) {
+            const form = document.querySelector(`.file-item[data-file-id="${selectedFile.id}"] .delete-file-form`);
+            if (form) {
+                form.submit();
+            }
+        }
     }
-  }
-  hideFileContextMenu();
+    hideFileContextMenu();
 }
 
 function copyFilePath() {
-  if (selectedFile.name) {
-    navigator.clipboard.writeText(selectedFile.name)
-      .then(() => {
-        alert(`Имя файла скопировано: ${selectedFile.name}`);
-      })
-      .catch(err => {
-        console.error('Ошибка при копировании: ', err);
-      });
-    
-    hideFileContextMenu();
-  }
+    if (selectedFile.name) {
+        navigator.clipboard.writeText(selectedFile.name)
+            .then(() => {
+                showToast('Имя файла скопировано в буфер обмена', 'success');
+            })
+            .catch(err => {
+                console.error('Ошибка при копировании: ', err);
+                showToast('Не удалось скопировать имя файла', 'error');
+            });
+        
+        hideFileContextMenu();
+    }
 }
 
 function hideContextMenu() {
-  ContextMenu.hide();
+    ContextMenu.hide();
 }
 
 function hideFolderContextMenu() {
-  FolderContextMenu.hide();
+    FolderContextMenu.hide();
 }
 
 function hideFileContextMenu() {
-  FileContextMenu.hide();
+    FileContextMenu.hide();
 }
 
 function showEmptyAreaContextMenu(event) {
-  event.preventDefault();
-  
-  const target = event.target;
-  const isEmptyArea = target.id === 'emptyArea' || 
-                      target.closest('#emptyArea') || 
-                      (!target.closest('.folder-item') && 
-                       !target.closest('.file-item') && 
-                       !target.closest('#contextMenu') &&
-                       !target.closest('#folderContextMenu') &&
-                       !target.closest('#fileContextMenu'));
-  
-  if (isEmptyArea) {
-    hideFolderContextMenu();
-    hideFileContextMenu();
-    ContextMenu.show(event.clientX, event.clientY);
-  }
+    event.preventDefault();
+    
+    const target = event.target;
+    const isEmptyArea = target.id === 'emptyArea' || 
+                       target.closest('#emptyArea') || 
+                       (!target.closest('.folder-item') && 
+                        !target.closest('.file-item') && 
+                        !target.closest('#contextMenu') &&
+                        !target.closest('#folderContextMenu') &&
+                        !target.closest('#fileContextMenu'));
+    
+    if (isEmptyArea) {
+        hideFolderContextMenu();
+        hideFileContextMenu();
+        ContextMenu.show(event.clientX, event.clientY);
+    }
 }
 
 function showCreateFolderModal() {
-  document.getElementById('createFolderModal').classList.remove('hidden');
-  document.getElementById('folderNameInput').focus();
-  hideContextMenu();
-  hideFolderContextMenu();
-  hideFileContextMenu();
-}
-
-function showDeleteFolderModal(currentPath) {
-  const modal = document.getElementById('deleteFolderModal');
-  const message = document.getElementById('deleteFolderMessage');
-  
-  let folderName = 'текущую папку';
-  if (currentPath) {
-    const pathParts = currentPath.split('/');
-    if (pathParts.length > 0) {
-      folderName = pathParts[pathParts.length - 1];
-    }
-  }
-  
-  message.textContent = `Вы уверены, что хотите удалить ${folderName}?`;
-  modal.classList.remove('hidden');
-  hideContextMenu();
-  hideFolderContextMenu();
-  hideFileContextMenu();
-}
-
-function closeModal(modalId) {
-  document.getElementById(modalId).classList.add('hidden');
-}
-
-function validateFolderName(input) {
-  const errorEl = document.getElementById('folderNameError');
-  const name = input.value.trim();
-  
-  if (!name) {
-    errorEl.textContent = 'Имя папки не может быть пустым';
-    errorEl.classList.remove('hidden');
-    return false;
-  }
-  
-  const forbiddenChars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
-  for (const char of forbiddenChars) {
-    if (name.includes(char)) {
-      errorEl.textContent = `Имя не может содержать символ "${char}"`;
-      errorEl.classList.remove('hidden');
-      return false;
-    }
-  }
-  
-  if (name.endsWith('.') || name.endsWith(' ')) {
-    errorEl.textContent = 'Имя не может заканчиваться точкой или пробелом';
-    errorEl.classList.remove('hidden');
-    return false;
-  }
-  
-  errorEl.classList.add('hidden');
-  return true;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
-  
-  ContextMenu.init();
-  FolderContextMenu.init();
-  FileContextMenu.init();
-  
-  document.querySelectorAll('.folder-item').forEach(folder => {
-    folder.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      hideContextMenu();
-      hideFileContextMenu();
-      FolderContextMenu.show(e.clientX, e.clientY, this);
-    });
-  });
-  
-  document.querySelectorAll('.file-item').forEach(file => {
-    file.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      hideContextMenu();
-      hideFolderContextMenu();
-      FileContextMenu.show(e.clientX, e.clientY, this);
-    });
-  });
-  
-  const emptyArea = document.getElementById('emptyArea');
-  if (emptyArea) {
-    emptyArea.addEventListener('contextmenu', showEmptyAreaContextMenu);
-  }
-  
-  document.addEventListener('contextmenu', function(e) {
-    const target = e.target;
-    const isFolder = target.closest('.folder-item');
-    const isFile = target.closest('.file-item');
-    const isEmptyArea = target.id === 'emptyArea' || target.closest('#emptyArea');
-    
-    if (!isFolder && !isFile && !isEmptyArea) {
-      const fileManager = document.getElementById('fileManager');
-      if (fileManager && fileManager.contains(target)) {
-        showEmptyAreaContextMenu(e);
-      }
-    }
-  });
-  
-  document.querySelectorAll('.group').forEach((item, index) => {
-    item.style.animationDelay = `${index * 0.05}s`;
-  });
-});
-
-document.querySelectorAll('.modal').forEach(modal => {
-  modal.addEventListener('click', function(e) {
-    if (e.target === this) {
-      this.classList.add('hidden');
-    }
-  });
-});
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
+    document.getElementById('createFolderModal').classList.remove('hidden');
+    document.getElementById('folderNameInput').focus();
     hideContextMenu();
     hideFolderContextMenu();
     hideFileContextMenu();
+}
+
+function showDeleteFolderModal(currentPath) {
+    const modal = document.getElementById('deleteFolderModal');
+    const message = document.getElementById('deleteFolderMessage');
     
-    document.querySelectorAll('.modal').forEach(modal => {
-      if (!modal.classList.contains('hidden')) {
-        modal.classList.add('hidden');
-      }
+    let folderName = 'текущую папку';
+    if (currentPath) {
+        const pathParts = currentPath.split('/');
+        if (pathParts.length > 0 && pathParts[pathParts.length - 1]) {
+            folderName = `папку "${pathParts[pathParts.length - 1]}"`;
+        }
+    }
+    
+    message.textContent = `Вы уверены, что хотите удалить ${folderName}?`;
+    modal.classList.remove('hidden');
+    hideContextMenu();
+    hideFolderContextMenu();
+    hideFileContextMenu();
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+function validateFolderName(input, errorId) {
+    const errorEl = document.getElementById(errorId);
+    const name = input.value.trim();
+    
+    if (!name) {
+        errorEl.textContent = 'Имя папки не может быть пустым';
+        errorEl.classList.remove('hidden');
+        return false;
+    }
+    
+    const forbiddenChars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+    for (const char of forbiddenChars) {
+        if (name.includes(char)) {
+            errorEl.textContent = `Имя не может содержать символ "${char}"`;
+            errorEl.classList.remove('hidden');
+            return false;
+        }
+    }
+    
+    if (name.endsWith('.') || name.endsWith(' ')) {
+        errorEl.textContent = 'Имя не может заканчиваться точкой или пробелом';
+        errorEl.classList.remove('hidden');
+        return false;
+    }
+    
+    errorEl.classList.add('hidden');
+    return true;
+}
+
+function validateFileName(input, errorId) {
+    const errorEl = document.getElementById(errorId);
+    const name = input.value.trim();
+    
+    if (!name) {
+        errorEl.textContent = 'Имя файла не может быть пустым';
+        errorEl.classList.remove('hidden');
+        return false;
+    }
+    
+    const forbiddenChars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+    for (const char of forbiddenChars) {
+        if (name.includes(char)) {
+            errorEl.textContent = `Имя не может содержать символ "${char}"`;
+            errorEl.classList.remove('hidden');
+            return false;
+        }
+    }
+    
+    if (name.endsWith('.') || name.endsWith(' ')) {
+        errorEl.textContent = 'Имя не может заканчиваться точкой или пробелом';
+        errorEl.classList.remove('hidden');
+        return false;
+    }
+    
+    errorEl.classList.add('hidden');
+    return true;
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="flex items-center gap-2">
+            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info'}" 
+               class="w-4 h-4 ${type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-blue-600'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    container.appendChild(toast);
+    
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease-out forwards';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    
+    ContextMenu.init();
+    FolderContextMenu.init();
+    FileContextMenu.init();
+    
+    document.querySelectorAll('.folder-item').forEach(folder => {
+        folder.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            hideContextMenu();
+            hideFileContextMenu();
+            FolderContextMenu.show(e.clientX, e.clientY, this);
+        });
+        
+        folder.addEventListener('dblclick', function() {
+            const path = this.getAttribute('data-folder-path');
+            if (path) {
+                window.location.href = `{% url 'file_list' %}?path=${encodeURIComponent(path)}`;
+            }
+        });
     });
-  }
+    
+    document.querySelectorAll('.file-item').forEach(file => {
+        file.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            hideContextMenu();
+            hideFolderContextMenu();
+            FileContextMenu.show(e.clientX, e.clientY, this);
+        });
+        
+        file.addEventListener('dblclick', function() {
+            const fileId = this.getAttribute('data-file-id');
+            if (fileId) {
+                window.location.href = `{% url 'download_file' 0 %}`.replace('0', fileId);
+            }
+        });
+    });
+    
+    const emptyArea = document.getElementById('emptyArea');
+    if (emptyArea) {
+        emptyArea.addEventListener('contextmenu', showEmptyAreaContextMenu);
+    }
+    
+    document.addEventListener('contextmenu', function(e) {
+        const target = e.target;
+        const isFolder = target.closest('.folder-item');
+        const isFile = target.closest('.file-item');
+        const isEmptyArea = target.id === 'emptyArea' || target.closest('#emptyArea');
+        
+        if (!isFolder && !isFile && !isEmptyArea) {
+            const fileManager = document.getElementById('fileManager');
+            if (fileManager && fileManager.contains(target)) {
+                showEmptyAreaContextMenu(e);
+            }
+        }
+    });
+    
+    document.querySelectorAll('.group').forEach((item, index) => {
+        item.style.animationDelay = `${index * 0.05}s`;
+    });
+    
+    document.getElementById('renameFolderModal')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.click();
+        }
+    });
+    
+    document.getElementById('renameFileModal')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.click();
+        }
+    });
+    
+    document.getElementById('createFolderForm')?.addEventListener('submit', function(e) {
+        const input = this.querySelector('#folderNameInput');
+        if (!validateFolderName(input, 'folderNameError')) {
+            e.preventDefault();
+        }
+    });
+    
+    document.getElementById('renameFolderForm')?.addEventListener('submit', function(e) {
+        const input = this.querySelector('#newFolderNameInput');
+        if (!validateFolderName(input, 'renameFolderError')) {
+            e.preventDefault();
+        }
+    });
+    
+    document.getElementById('renameFileForm')?.addEventListener('submit', function(e) {
+        const input = this.querySelector('#newFileNameInput');
+        if (!validateFileName(input, 'renameFileError')) {
+            e.preventDefault();
+        }
+    });
+});
+
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+        }
+    });
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        hideContextMenu();
+        hideFolderContextMenu();
+        hideFileContextMenu();
+        
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (!modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
