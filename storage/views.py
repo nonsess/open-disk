@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.urls import reverse
 from urllib.parse import quote
 
-from storage.models import StoredFile
+from storage.models import Folder, StoredFile
 from storage.services import StorageService
 
 
@@ -40,28 +40,52 @@ def file_list(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def upload_file(request: HttpRequest) -> HttpResponse:
+    current_path = request.GET.get('path', '').strip()
+    current_folder = None
+    current_folder_name = ""
+    
+    if current_path:
+        current_folder = Folder.find_by_path(request.user, current_path)
+        if current_folder:
+            current_folder_name = current_folder.name
+    
     if request.method == 'POST':
+        post_current_path = request.POST.get('current_path', '').strip()
+        if post_current_path:
+            current_path = post_current_path
+            current_folder = Folder.find_by_path(request.user, current_path)
+            if current_folder:
+                current_folder_name = current_folder.name
+        
         files = request.FILES.getlist('files')
-        relative_paths = request.POST.getlist('relative_paths')
+        
+        relative_paths = []
+        for file_obj in files:
+            if current_folder and current_folder.full_path:
+                full_path = f"{current_folder.full_path}/{file_obj.name}"
+            else:
+                full_path = file_obj.name
+            relative_paths.append(full_path)
         
         error = StorageService.validate_upload_data(files, relative_paths)
         if error:
             messages.error(request, error)
-            return redirect('upload_file')
+            return _redirect_to_path(current_path)
         
         uploaded_count, errors = StorageService.upload_files(
             request.user, files, relative_paths
         )
-        
-        if uploaded_count > 0:
-            messages.success(request, f'Загружено файлов: {uploaded_count}')
-        
+                
         for error in errors:
             messages.error(request, error)
         
-        return redirect('file_list')
+        return _redirect_to_path(current_path)
     
-    return render(request, 'storage/upload.html')
+    return render(request, 'storage/upload.html', {
+        'current_path': current_path,
+        'current_folder': current_folder,
+        'current_folder_name': current_folder_name,
+    })
 
 
 @login_required
@@ -78,14 +102,9 @@ def delete_file(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == 'POST':
         success, message = StorageService.delete_file(request.user, pk)
         
-        if success:
-            messages.success(request, message)
-        else:
+        if not success:
             messages.error(request, message)
-    
-    file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
-    if file_obj.folder:
-        return _redirect_to_path(file_obj.folder.full_path)
+
     return redirect('file_list')
 
 

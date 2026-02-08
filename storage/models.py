@@ -43,7 +43,7 @@ class Folder(models.Model):
     )
         
     class Meta:
-        ordering = ['name']
+        ordering = ['created_at']
         unique_together = ['owner', 'parent', 'name']
         verbose_name = 'Папка'
         verbose_name_plural = 'Папки'
@@ -462,7 +462,7 @@ class StoredFile(models.Model):
     )
         
     class Meta:
-        ordering = ['-uploaded_at']
+        ordering = ['uploaded_at']
         verbose_name = 'Файл'
         verbose_name_plural = 'Файлы'
         indexes = [

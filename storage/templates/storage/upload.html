@@ -2,25 +2,28 @@
 
 {% block content %}
 <div class="container mx-auto">
-  <nav class="flex items-center text-sm text-gray-400" aria-label="Навигация">
-    <a href="{% url 'file_list' %}" class="text-gray-900 hover:text-gold-dark flex items-center">
-      <i data-lucide="home" class="w-4 h-4 mr-1"></i>
-      Главная
-    </a>
-  </nav>
-
   <div class="max-w-2xl mx-auto">
-    <h2 class="text-2xl font-bold mb-6">Загрузить файлы или папки</h2>
-  
-    <form method="post" enctype="multipart/form-data" class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
-          id="uploadForm">
+    <form method="post" enctype="multipart/form-data" 
+          class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
+          id="uploadForm"
+          action="{% url 'upload_file' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}">
       {% csrf_token %}
+      
+      <input type="hidden" name="current_path" value="{{ current_path }}">
   
       <input 
         type="file" 
         id="fileInput" 
-        name="file"
-        webkitdirectory mozdirectory msdirectory odirectory directory multiple
+        name="files"
+        multiple
+        class="hidden"
+      >
+      
+      <input 
+        type="file" 
+        id="folderInput" 
+        name="files"
+        webkitdirectory mozdirectory msdirectory odirectory directory
         class="hidden"
       >
   
@@ -28,29 +31,77 @@
         id="dropZone"
         class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
       >
-        <i data-lucide="upload" class="w-10 h-10 text-gray-400 mx-auto"></i>
-        <p class="mt-2 text-gray-700">
-          Перетащите файлы или папки сюда<br>
-          <span class="text-sm text-gray-500">или нажмите, чтобы выбрать</span>
+        <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <i data-lucide="upload-cloud" class="w-10 h-10 text-gray-400"></i>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">
+          Перетащите файлы или папки сюда
+        </h3>
+        <p class="text-gray-600 mb-4">или</p>
+        
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button 
+            type="button"
+            onclick="document.getElementById('fileInput').click()"
+            class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-5 py-2.5 rounded-lg hover:opacity-90 transition-all font-medium"
+          >
+            <i data-lucide="file" class="w-5 h-5"></i>
+            Выбрать файлы
+          </button>
+          
+          <button 
+            type="button"
+            onclick="document.getElementById('folderInput').click()"
+            class="inline-flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg hover:bg-gray-50 transition-all font-medium"
+          >
+            <i data-lucide="folder" class="w-5 h-5"></i>
+            Выбрать папку
+          </button>
+        </div>
+        
+        <p class="text-sm text-gray-500 mt-4">
+          Можно выбрать несколько файлов или целую папку со всем содержимым
         </p>
       </div>
   
-      <div id="fileList" class="mt-4 space-y-2 min-h-[20px]"></div>
+      <div id="fileListContainer" class="mt-6 hidden">
+        <h4 class="font-medium text-gray-900 mb-3">Выбранные файлы:</h4>
+        <div id="fileList" class="space-y-2 max-h-60 overflow-y-auto p-4 bg-gray-50 rounded-lg border border-gray-200"></div>
+      </div>
   
       <div id="hiddenInputs"></div>
+  
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+        <div class="flex items-start gap-3">
+          <i data-lucide="folder" class="w-5 h-5 text-blue-500 mt-0.5"></i>
+          <div>
+            <p class="text-sm text-blue-800 font-medium mb-1">Папка назначения:</p>
+            <p class="text-sm text-blue-700">
+              {% if current_folder_name %}
+                <span class="font-semibold">{{ current_folder_name }}</span>
+              {% else %}
+                <span class="font-semibold">Главная папка</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
   
       <div class="flex gap-3 mt-6">
         <button 
           type="submit" 
           id="uploadBtn" 
-          class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-4 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+          class="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-all shadow-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
           disabled
         >
-          <i data-lucide="upload"></i>
+          <i data-lucide="upload" class="w-5 h-5"></i>
           Загрузить
         </button>
-        <a href="{% url 'file_list' %}" class="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">
-          Назад
+        
+        <a href="{% url 'file_list' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}" 
+           class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+          <i data-lucide="x" class="w-5 h-5"></i>
+          Отмена
         </a>
       </div>
     </form>
@@ -58,70 +109,239 @@
 </div>
 
 <script>
-function handleFiles(files) {
+let selectedFiles = [];
+let selectedFilesData = [];
+
+function handleFiles(files, fromFolderInput = false) {
+  const newFiles = Array.from(files);
+  
+  newFiles.forEach(file => {
+    let relativePath = '';
+    
+    if (fromFolderInput && file.webkitRelativePath) {
+      relativePath = file.webkitRelativePath;
+    } else {
+      relativePath = file.name;
+    }
+    
+    selectedFilesData.push({
+      file: file,
+      relativePath: relativePath
+    });
+    
+    selectedFiles.push(file);
+  });
+  
+  updateFileList();
+}
+
+function updateFileList() {
+  const fileListContainer = document.getElementById('fileListContainer');
   const fileList = document.getElementById('fileList');
   const hiddenInputs = document.getElementById('hiddenInputs');
   const uploadBtn = document.getElementById('uploadBtn');
+  const fileCountSpan = document.getElementById('fileCount');
 
   fileList.innerHTML = '';
   hiddenInputs.innerHTML = '';
 
-  if (files.length === 0) {
+  if (selectedFilesData.length === 0) {
+    fileListContainer.classList.add('hidden');
     uploadBtn.disabled = true;
+    fileCountSpan.textContent = '0';
     return;
   }
 
-  Array.from(files).forEach(file => {
-    const relPath = file.webkitRelativePath || file.name;
+  fileListContainer.classList.remove('hidden');
+  uploadBtn.disabled = false;
+  fileCountSpan.textContent = selectedFilesData.length;
+
+  const formData = new FormData();
+  formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+  formData.append('current_path', '{{ current_path }}');
+  
+  selectedFilesData.forEach((fileData, index) => {
+    const file = fileData.file;
+    const relativePath = fileData.relativePath;
+    const fileSize = formatFileSize(file.size);
 
     const div = document.createElement('div');
-    div.className = "text-sm text-gray-700 truncate";
-    div.textContent = relPath;
+    div.className = "flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200";
+    div.innerHTML = `
+      <div class="flex items-center gap-3 flex-1 min-w-0">
+        <div class="w-10 h-10 rounded-lg ${getFileIconColor(file.type)} flex items-center justify-center flex-shrink-0">
+          <i data-lucide="${getFileIcon(file.type)}" class="w-5 h-5 ${getFileIconTextColor(file.type)}"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900 truncate" title="${relativePath}">
+            ${relativePath}
+          </p>
+          <p class="text-xs text-gray-500">${fileSize} • ${getFileType(file.type)}</p>
+        </div>
+      </div>
+      <button type="button" 
+              onclick="removeFile(${index})"
+              class="ml-3 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    `;
     fileList.appendChild(div);
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'hidden';
+    fileInput.name = 'files';
+    fileInput.value = file.name;
+    hiddenInputs.appendChild(fileInput);
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'relative_path';
-    input.value = relPath;
-    hiddenInputs.appendChild(input);
+    const pathInput = document.createElement('input');
+    pathInput.type = 'hidden';
+    pathInput.name = 'relative_paths';
+    pathInput.value = relativePath;
+    hiddenInputs.appendChild(pathInput);
   });
 
-  uploadBtn.disabled = false;
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
-document.getElementById('dropZone').addEventListener('click', () => {
-  document.getElementById('fileInput').click();
-});
-
-document.getElementById('fileInput').addEventListener('change', (e) => {
-  handleFiles(e.target.files);
-});
-
-const dropZone = document.getElementById('dropZone');
-
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-  dropZone.addEventListener(eventName, e => {
-    e.preventDefault();
-    e.stopPropagation();
-  });
-});
-
-['dragenter', 'dragover'].forEach(eventName => {
-  dropZone.addEventListener(eventName, () => {
-    dropZone.classList.add('bg-gray-100', 'border-gray-400');
-  });
-});
-
-['dragleave', 'drop'].forEach(eventName => {
-  dropZone.addEventListener(eventName, () => {
-    dropZone.classList.remove('bg-gray-100', 'border-gray-400');
-  });
-});
-
-dropZone.addEventListener('drop', e => {
-  const files = e.dataTransfer.files;
-  handleFiles(files);
+function removeFile(index) {
+  selectedFilesData.splice(index, 1);
+  selectedFiles.splice(index, 1);
+  updateFileList();
+  
   document.getElementById('fileInput').value = '';
+  document.getElementById('folderInput').value = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getFileIcon(mimeType) {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType === 'application/pdf') return 'file-text';
+  if (mimeType.includes('word') || mimeType.includes('document')) return 'file-text';
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'file-spreadsheet';
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'file-sliders';
+  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'archive';
+  if (mimeType.includes('audio')) return 'music';
+  if (mimeType.includes('video')) return 'video';
+  return 'file';
+}
+
+function getFileIconColor(mimeType) {
+  if (mimeType.startsWith('image/')) return 'bg-green-100';
+  if (mimeType === 'application/pdf') return 'bg-red-100';
+  if (mimeType.includes('word') || mimeType.includes('document')) return 'bg-blue-100';
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'bg-green-100';
+  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bg-orange-100';
+  return 'bg-gray-100';
+}
+
+function getFileIconTextColor(mimeType) {
+  if (mimeType.startsWith('image/')) return 'text-green-600';
+  if (mimeType === 'application/pdf') return 'text-red-600';
+  if (mimeType.includes('word') || mimeType.includes('document')) return 'text-blue-600';
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'text-green-600';
+  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'text-orange-600';
+  return 'text-gray-600';
+}
+
+function getFileType(mimeType) {
+  if (mimeType.startsWith('image/')) return 'Изображение';
+  if (mimeType === 'application/pdf') return 'PDF';
+  if (mimeType.includes('word') || mimeType.includes('document')) return 'Документ';
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'Таблица';
+  if (mimeType.includes('presentation')) return 'Презентация';
+  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'Архив';
+  if (mimeType.includes('audio')) return 'Аудио';
+  if (mimeType.includes('video')) return 'Видео';
+  return 'Файл';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const folderInput = document.getElementById('folderInput');
+
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files, false);
+  });
+
+  folderInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files, true);
+  });
+
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  });
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+      dropZone.classList.add('bg-amber-50', 'border-amber-400');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+      dropZone.classList.remove('bg-amber-50', 'border-amber-400');
+    });
+  });
+
+  dropZone.addEventListener('drop', e => {
+    const items = e.dataTransfer.items;
+    const files = e.dataTransfer.files;
+    
+    let hasDirectory = false;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === 'file' && item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry();
+        if (entry && entry.isDirectory) {
+          hasDirectory = true;
+          break;
+        }
+      }
+    }
+    
+    if (hasDirectory) {
+      alert('Для загрузки папок используйте кнопку "Выбрать папку". Drag & Drop для папок не поддерживается во всех браузерах.');
+      folderInput.click();
+    } else {
+      handleFiles(files, false);
+    }
+    
+    fileInput.value = '';
+    folderInput.value = '';
+  });
+});
+
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+  if (selectedFilesData.length === 0) {
+    e.preventDefault();
+    alert('Пожалуйста, выберите файлы для загрузки');
+    return;
+  }
+  
+  const uploadBtn = document.getElementById('uploadBtn');
+  const originalText = uploadBtn.innerHTML;
+  uploadBtn.disabled = true;
+  uploadBtn.innerHTML = `
+    <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+    Загрузка...
+  `;
+  
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 </script>
 {% endblock %}
