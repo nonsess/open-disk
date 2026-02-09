@@ -54,8 +54,8 @@
         Новая папка
       </button>
       
-      {% if current_path and current_folder %}
-        <button onclick="showDeleteFolderModal('{{ current_path }}')"
+      {% if current_folder %}
+        <button onclick="showDeleteFolderModal('{{ current_folder.pk }}', '{{ current_folder_name|escapejs }}')"
                 class="flex text-sm items-center gap-1 bg-white text-red-600 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-all">
           <i data-lucide="trash-2" class="w-3 h-3"></i>
           Удалить папку
@@ -353,18 +353,25 @@
 
 <div id="deleteFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Удалить папку</h3>
+      <button onclick="closeModal('deleteFolderModal')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
     <div class="mb-6">
-      <p class="text-center text-gray-700" id="deleteFolderMessage">
-        Вы уверены, что хотите удалить текущую папку?
+      <p class="text-gray-700 mb-2" id="deleteFolderMessage">
+        Вы уверены, что хотите удалить папку?
       </p>
-      <p class="text-center text-sm text-gray-500 mt-2" id="deleteFolderInfo">
-        Будет удалено все содержимое папки.
+      <p class="text-sm text-gray-500" id="deleteFolderInfo">
+        Будет удалено все содержимое папки. Это действие необратимо.
       </p>
     </div>
     
     <form method="post" action="{% url 'delete_folder' %}" id="deleteFolderForm">
       {% csrf_token %}
-      <input type="hidden" name="folder_id" id="selectedFolderId" value="{{ current_folder.id|default:'' }}">
+      <input type="hidden" name="folder_id" id="selectedFolderId">
       
       <div class="flex gap-3">
         <button type="submit"
@@ -383,18 +390,25 @@
 
 <div id="deleteSelectedFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-gray-900">Удалить папку</h3>
+      <button onclick="closeModal('deleteSelectedFolderModal')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
     <div class="mb-6">
-      <p class="text-center text-gray-700" id="deleteSelectedFolderMessage">
-        Вы уверены, что хотите удалить папку "<span id="selectedFolderName"></span>"?
+      <p class="text-gray-700 mb-2">
+        Вы уверены, что хотите удалить папку "<span id="selectedFolderName" class="font-semibold"></span>"?
       </p>
-      <p class="text-center text-sm text-gray-500 mt-2">
-        Будет удалено все содержимое папки.
+      <p class="text-sm text-gray-500">
+        Будет удалено все содержимое папки. Это действие необратимо.
       </p>
     </div>
     
     <form method="post" action="{% url 'delete_folder' %}" id="deleteSelectedFolderForm">
       {% csrf_token %}
-      <input type="hidden" name="folder_id" id="selectedFolderId">
+      <input type="hidden" name="folder_id" id="selectedFolderId2">
       
       <div class="flex gap-3">
         <button type="submit"
@@ -735,7 +749,7 @@ function renameSelectedFolder() {
 function deleteSelectedFolder() {
     if (selectedFolder.name && selectedFolder.id) {
         const nameEl = document.getElementById('selectedFolderName');
-        const idEl = document.getElementById('selectedFolderId');
+        const idEl = document.getElementById('selectedFolderId2');
         
         if (nameEl) nameEl.textContent = selectedFolder.name;
         if (idEl) idEl.value = selectedFolder.id;
@@ -848,21 +862,20 @@ function showCreateFolderModal() {
     hideFileContextMenu();
 }
 
-function showDeleteFolderModal(currentPath) {
+function showDeleteFolderModal(folderId, folderName) {
+    if (!folderId || !folderName) return;
+    
     const modal = document.getElementById('deleteFolderModal');
-    const message = document.getElementById('deleteFolderMessage');
+    const messageEl = document.getElementById('deleteFolderMessage');
     const folderIdInput = document.getElementById('selectedFolderId');
     
     if (modal) {
-        let folderName = 'текущую папку';
-        if (currentPath) {
-            const pathParts = currentPath.split('/');
-            if (pathParts.length > 0 && pathParts[pathParts.length - 1]) {
-                folderName = `папку "${pathParts[pathParts.length - 1]}"`;
-            }
+        if (messageEl) {
+            messageEl.textContent = `Вы уверены, что хотите удалить папку "${folderName}"?`;
         }
-        
-        if (message) message.textContent = `Вы уверены, что хотите удалить ${folderName}?`;
+        if (folderIdInput) {
+            folderIdInput.value = folderId;
+        }
         modal.classList.remove('hidden');
     }
     
