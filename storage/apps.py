@@ -8,7 +8,6 @@ from django.conf import settings
 
 
 class StorageConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
     name = 'storage'
 
     def ready(self):
@@ -30,6 +29,5 @@ class StorageConfig(AppConfig):
         bucket_name = settings.AWS_STORAGE_BUCKET_NAME
         try:
             s3.head_bucket(Bucket=bucket_name)
-        except ClientError as e  :
+        except ClientError as e:
             s3.create_bucket(Bucket=bucket_name)
-            print(f"Bucket '{bucket_name}' создан в MinIO")

@@ -1,4 +1,4 @@
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -93,7 +93,7 @@ def download_file(request: HttpRequest, pk: int) -> HttpResponse:
     file_obj = get_object_or_404(StoredFile, pk=pk, owner=request.user)
     
     response = HttpResponse(file_obj.file, content_type=file_obj.mime_type)
-    response['Content-Disposition'] = f'attachment; filename="{file_obj.original_name}"'
+    response['Content-Disposition'] = f'attachment; filename="{file_obj.display_name}"'
     return response
 
 
