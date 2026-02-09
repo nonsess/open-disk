@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Optional, Tuple, Set
+from typing import List, Dict, Optional, Tuple
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.contrib.auth.models import User
@@ -246,6 +246,7 @@ class StorageService:
         except Exception as e:
             return False, f"Ошибка при удалении файла: {str(e)}"
     
+
     @staticmethod
     @transaction.atomic
     def rename_file(
@@ -260,22 +261,32 @@ class StorageService:
                 return False, "Файл не найден", None
             
             old_name = file_obj.original_name
-            old_full_path = file_obj.full_path
             
+            old_storage_path = file_obj.file.name
+            
+            if not old_storage_path.startswith(f"user-{user.id}-files/"):
+                return False, f"Некорректный путь файла: {old_storage_path}", None
+            
+            path_parts = old_storage_path.rsplit('/', 1)
+            if len(path_parts) == 2:
+                directory = path_parts[0] + '/'
+                new_storage_path = directory + new_name
+            else:
+                new_storage_path = new_name
+                        
             minio_client = MinIOClient()
             
-            old_minio_path = f"user-{user.id}-files/{old_full_path}"
-            new_minio_path = f"user-{user.id}-files/{file_obj.folder.full_path}/{new_name}" if file_obj.folder else f"user-{user.id}-files/{new_name}"
-            
             success, message = minio_client.rename_object(
-                old_key=old_minio_path,
-                new_key=new_minio_path
+                old_key=old_storage_path,
+                new_key=new_storage_path
             )
             
             if not success:
                 return False, message, None
             
-            result = file_obj.rename(new_name)
+            file_obj.original_name = new_name
+            file_obj.file.name = new_storage_path
+            file_obj.save()
             
             return True, f"Файл '{old_name}' переименован в '{new_name}'", file_obj
             
@@ -283,6 +294,7 @@ class StorageService:
             return False, str(e), None
         except Exception as e:
             return False, f"Ошибка переименования файла: {str(e)}", None
+
 
     @staticmethod
     def validate_upload_data(
@@ -307,3 +319,13 @@ class StorageService:
             return Folder.objects.get(pk=folder_id, owner=user)
         except Folder.DoesNotExist:
             return None
+    
+    @staticmethod
+    def search_files(user: User, query: str) -> List[StoredFile]:
+        if not query:
+            return []
+
+        return StoredFile.objects.filter(
+            owner=user,
+            original_name__icontains=query
+        ).order_by('original_name')

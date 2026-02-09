@@ -98,6 +98,20 @@ def download_file(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+def search_file(request: HttpRequest) -> HttpResponse:
+    query = request.GET.get('query', '').strip()
+
+    files = []
+    if query:
+        files = StorageService.search_files(request.user, query)
+    
+    return render(request, 'storage/search.html', {
+        'query': query,
+        'files': files,
+    })
+
+
+@login_required
 def delete_file(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == 'POST':
         success, message = StorageService.delete_file(request.user, pk)
@@ -207,23 +221,17 @@ def delete_folder(request: HttpRequest) -> HttpResponse:
     folder_id = request.POST.get('folder_id', '').strip()
     
     if not folder_id:
-        messages.error(request, 'Не указан ID папки')
+        messages.error(request, 'Ошибка. Папки не существует')
         return redirect('file_list')
     
-    try:
-        folder_id_int = int(folder_id)
-    except ValueError:
-        messages.error(request, 'Неверный ID папки')
-        return redirect('file_list')
+    folder_id_int = int(folder_id)
     
     success, message, redirect_path = StorageService.delete_folder(
         user=request.user,
         folder_id=folder_id_int
     )
     
-    if success:
-        messages.success(request, message)
-    else:
+    if not success:
         messages.error(request, message)
     
     return _redirect_to_path(redirect_path)
