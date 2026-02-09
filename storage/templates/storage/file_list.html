@@ -92,10 +92,13 @@
     
       {% if files %}
         {% for file in files %}
-        <div class="group relative file-item" data-file-name="{{ file.original_name }}" data-file-id="{{ file.pk }}">
+        <div class="group relative file-item" 
+             data-file-name="{{ file.original_name }}" 
+             data-file-id="{{ file.pk }}"
+             data-file-type="{{ file.file_type }}">
           <div class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200"
                ondblclick="window.location.href='{% url 'download_file' file.pk %}'">
-            <div class="w-16 h-16 rounded-xl {{ file.file_type|default:'bg-blue-100' }} flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200 relative">
+            <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200 relative">
               {% if file.file_type == 'pdf' %}
                 <div class="bg-red-100 w-full h-full rounded-xl flex items-center justify-center">
                   <i data-lucide="file-text" class="w-8 h-8 text-red-600"></i>
@@ -159,7 +162,6 @@
   </div>
 </div>
 
-<!-- Контекстное меню для пустой области -->
 <div id="contextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
   <button onclick="showCreateFolderModal(); hideContextMenu()" 
           class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
@@ -182,7 +184,6 @@
   </button>
 </div>
 
-<!-- Контекстное меню для папок -->
 <div id="folderContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
   <button onclick="openSelectedFolder(); hideFolderContextMenu()" 
           class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
@@ -203,7 +204,6 @@
   </button>
 </div>
 
-<!-- Контекстное меню для файлов -->
 <div id="fileContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
   <button onclick="downloadSelectedFile(); hideFileContextMenu()" 
           class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
@@ -217,11 +217,6 @@
     <span>Переименовать</span>
   </button>
   
-  <form method="post" action="{% url 'delete_file' 0 %}" class="delete-file-form hidden">
-    {% csrf_token %}
-    <input type="hidden" name="file_id" value="">
-  </form>
-  
   <button onclick="deleteSelectedFile(); hideFileContextMenu()" 
           class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3">
     <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
@@ -229,7 +224,6 @@
   </button>
 </div>
 
-<!-- Модальное окно создания папки -->
 <div id="createFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
     <div class="flex items-center justify-between mb-6">
@@ -271,7 +265,6 @@
   </div>
 </div>
 
-<!-- Модальное окно переименования папки -->
 <div id="renameFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
     <div class="flex items-center justify-between mb-6">
@@ -315,7 +308,6 @@
   </div>
 </div>
 
-<!-- Модальное окно переименования файла -->
 <div id="renameFileModal" class="modal hidden">
   <div class="modal-content max-w-md">
     <div class="flex items-center justify-between mb-6">
@@ -359,7 +351,6 @@
   </div>
 </div>
 
-<!-- Модальное окно удаления текущей папки -->
 <div id="deleteFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
     <div class="mb-6">
@@ -373,7 +364,7 @@
     
     <form method="post" action="{% url 'delete_folder' %}" id="deleteFolderForm">
       {% csrf_token %}
-      <input type="hidden" name="folder_id" id="selectedFolderId">
+      <input type="hidden" name="folder_id" id="selectedFolderId" value="{{ current_folder.id|default:'' }}">
       
       <div class="flex gap-3">
         <button type="submit"
@@ -390,7 +381,6 @@
   </div>
 </div>
 
-<!-- Модальное окно удаления выбранной папки -->
 <div id="deleteSelectedFolderModal" class="modal hidden">
   <div class="modal-content max-w-md">
     <div class="mb-6">
@@ -420,9 +410,6 @@
     </form>
   </div>
 </div>
-
-<!-- Toast уведомления -->
-<div id="toastContainer" class="fixed top-4 right-4 z-[1001] flex flex-col gap-2"></div>
 
 <style>
 .modal {
@@ -493,51 +480,6 @@
   border-radius: 12px !important;
 }
 
-.toast {
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border-left: 4px solid #059669;
-  animation: slideInRight 0.3s ease-out;
-  max-width: 300px;
-}
-
-.toast.error {
-  border-left-color: #dc2626;
-}
-
-.toast.success {
-  border-left-color: #059669;
-}
-
-.toast.info {
-  border-left-color: #2563eb;
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOutRight {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-/* Стили для типов файлов */
 .bg-red-100 { background-color: #fee2e2; }
 .bg-green-100 { background-color: #dcfce7; }
 .bg-blue-100 { background-color: #dbeafe; }
@@ -813,16 +755,12 @@ function downloadSelectedFile() {
 
 function renameSelectedFile() {
     if (selectedFile.name && selectedFile.id) {
-        const currentNameEl = document.getElementById('currentFileName');
-        const fileIdEl = document.getElementById('renameFileId');
-        const newNameInput = document.getElementById('newFileNameInput');
-        
-        if (currentNameEl) currentNameEl.textContent = selectedFile.name;
-        if (fileIdEl) fileIdEl.value = selectedFile.id;
+        document.getElementById('currentFileName').textContent = selectedFile.name;
+        document.getElementById('renameFileId').value = selectedFile.id;
         
         const oldName = selectedFile.name;
         const nameWithoutExt = oldName.includes('.') ? oldName.substring(0, oldName.lastIndexOf('.')) : oldName;
-        if (newNameInput) newNameInput.value = nameWithoutExt;
+        document.getElementById('newFileNameInput').value = nameWithoutExt;
         
         const errorEl = document.getElementById('renameFileError');
         if (errorEl) errorEl.classList.add('hidden');
@@ -832,9 +770,10 @@ function renameSelectedFile() {
             modal.classList.remove('hidden');
             
             setTimeout(() => {
-                if (newNameInput) {
-                    newNameInput.focus();
-                    newNameInput.select();
+                const input = document.getElementById('newFileNameInput');
+                if (input) {
+                    input.focus();
+                    input.select();
                 }
             }, 100);
         }
@@ -924,13 +863,6 @@ function showDeleteFolderModal(currentPath) {
         }
         
         if (message) message.textContent = `Вы уверены, что хотите удалить ${folderName}?`;
-        
-        // Находим ID текущей папки
-        const currentFolderId = '{{ current_folder.id|default:"" }}';
-        if (folderIdInput && currentFolderId) {
-            folderIdInput.value = currentFolderId;
-        }
-        
         modal.classList.remove('hidden');
     }
     
@@ -1010,37 +942,6 @@ function validateFileName(input, errorId) {
     return true;
 }
 
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <div class="flex items-center gap-2">
-            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info'}" 
-               class="w-4 h-4 ${type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-blue-600'}"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    container.appendChild(toast);
-    
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-    
-    setTimeout(() => {
-        toast.style.animation = 'slideOutRight 0.3s ease-out forwards';
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300);
-    }, 3000);
-}
-
-// Инициализация
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -1050,7 +951,6 @@ document.addEventListener('DOMContentLoaded', function() {
     FolderContextMenu.init();
     FileContextMenu.init();
     
-    // Обработчики для папок
     document.querySelectorAll('.folder-item').forEach(folder => {
         folder.addEventListener('contextmenu', function(e) {
             e.preventDefault();
@@ -1062,7 +962,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Обработчики для файлов
     document.querySelectorAll('.file-item').forEach(file => {
         file.addEventListener('contextmenu', function(e) {
             e.preventDefault();
@@ -1074,13 +973,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Обработчик для пустой области
     const emptyArea = document.getElementById('emptyArea');
     if (emptyArea) {
         emptyArea.addEventListener('contextmenu', showEmptyAreaContextMenu);
     }
     
-    // Обработчик для всей страницы
     document.addEventListener('contextmenu', function(e) {
         const target = e.target;
         const isFolder = target.closest('.folder-item');
@@ -1095,7 +992,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Валидация форм
     const createFolderForm = document.getElementById('createFolderForm');
     if (createFolderForm) {
         createFolderForm.addEventListener('submit', function(e) {
@@ -1127,7 +1023,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Клик вне модального окна
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', function(e) {
         if (e.target === this) {
@@ -1136,7 +1031,6 @@ document.querySelectorAll('.modal').forEach(modal => {
     });
 });
 
-// Обработка клавиши Escape
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         hideContextMenu();
