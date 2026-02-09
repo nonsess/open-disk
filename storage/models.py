@@ -366,3 +366,31 @@ class StoredFile(models.Model):
             'old_name': old_name,
             'new_name': new_name
         }
+    
+    @property
+    def file_type(self) -> str:
+        if not self.mime_type:
+            return 'other'
+        
+        mime = self.mime_type.lower()
+        
+        if 'pdf' in mime:
+            return 'pdf'
+        elif any(t in mime for t in ['image/', 'jpeg', 'png', 'gif']):
+            return 'image'
+        elif any(t in mime for t in ['zip', 'rar', '7z', 'tar', 'gzip']):
+            return 'archive'
+        elif any(t in mime for t in ['msword', 'wordprocessingml']):
+            return 'document'
+        elif any(t in mime for t in ['excel', 'spreadsheetml']):
+            return 'spreadsheet'
+        elif any(t in mime for t in ['powerpoint', 'presentationml']):
+            return 'presentation'
+        elif 'audio' in mime:
+            return 'audio'
+        elif 'video' in mime:
+            return 'video'
+        elif 'text' in mime:
+            return 'text'
+        else:
+            return 'other'
