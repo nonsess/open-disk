@@ -15,8 +15,7 @@ class StorageConfig(AppConfig):
             command = sys.argv[1]
             if command in ('makemigrations', 'migrate', 'collectstatic', 'shell', 'dbshell'):
                 return
-
-        self.create_minio_bucket()
+        else: self.create_minio_bucket()
     
     def create_minio_bucket(self):
         s3: S3Client = boto3.client(
