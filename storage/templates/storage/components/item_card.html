@@ -1,0 +1,80 @@
+<div 
+  class="group {{ item_type }}-item"
+  {% if item_type == 'folder' %}
+    data-folder-id="{{ item.pk }}"
+    data-folder-name="{{ item.name }}"
+    data-folder-path="{{ item.full_path }}"
+  {% else %}
+    data-file-id="{{ item.pk }}"
+    data-file-name="{{ item.original_name }}"
+    data-file-type="{{ item.file_type }}"
+  {% endif %}
+>
+  <div 
+    class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
+    {% if item_type == 'folder' %}
+      ondblclick="window.location.href='{% url 'file_list' %}?path={{ item.full_path|urlencode }}'"
+    {% else %}
+      ondblclick="window.location.href='{% url 'download_file' item.pk %}'"
+    {% endif %}
+  >
+    <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
+      {% if item_type == 'folder' %}
+        <div class="bg-gradient-to-br from-yellow-100 to-yellow-50 w-full h-full rounded-xl flex items-center justify-center">
+          <i data-lucide="folder" class="w-8 h-8 text-yellow-600"></i>
+        </div>
+      {% else %}
+        {% if item.file_type == 'pdf' %}
+          <div class="bg-red-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file-text" class="w-8 h-8 text-red-600"></i>
+          </div>
+        {% elif item.file_type == 'image' %}
+          <div class="bg-green-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="image" class="w-8 h-8 text-green-600"></i>
+          </div>
+        {% elif item.file_type == 'archive' %}
+          <div class="bg-orange-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="archive" class="w-8 h-8 text-orange-600"></i>
+          </div>
+        {% elif item.file_type == 'document' %}
+          <div class="bg-blue-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file-text" class="w-8 h-8 text-blue-600"></i>
+          </div>
+        {% elif item.file_type == 'spreadsheet' %}
+          <div class="bg-green-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file-spreadsheet" class="w-8 h-8 text-green-600"></i>
+          </div>
+        {% elif item.file_type == 'presentation' %}
+          <div class="bg-purple-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="presentation" class="w-8 h-8 text-purple-600"></i>
+          </div>
+        {% elif item.file_type == 'audio' %}
+          <div class="bg-pink-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="music" class="w-8 h-8 text-pink-600"></i>
+          </div>
+        {% elif item.file_type == 'video' %}
+          <div class="bg-indigo-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="video" class="w-8 h-8 text-indigo-600"></i>
+          </div>
+        {% else %}
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file" class="w-8 h-8 text-gray-600"></i>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="text-center w-full">
+      <h3 
+        class="text-gray-900 text-sm truncate px-1 mb-1" 
+        title="{% if item_type == 'folder' %}{{ item.name }}{% else %}{{ item.original_name }}{% endif %}"
+      >
+        {% if item_type == 'folder' %}
+          {{ item.name|truncatechars:20 }}
+        {% else %}
+          {{ item.display_name|truncatechars:20 }}
+        {% endif %}
+      </h3>
+    </div>
+  </div>
+</div>

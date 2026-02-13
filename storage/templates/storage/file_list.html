@@ -66,88 +66,15 @@
 
   <div id="filesContainer" class="relative min-h-[400px]">
     {% if folders or files %}
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
-      {% if folders %}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
         {% for folder in folders %}
-        <div
-          class="group folder-item"
-          data-folder-id="{{ folder.pk }}"
-          data-folder-name="{{ folder.name }}"
-          data-folder-path="{{ folder.full_path }}"
-        >
-          <div class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
-               ondblclick="window.location.href='{% url 'file_list' %}?path={{ folder.full_path|urlencode }}'">
-            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-50 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
-              <i data-lucide="folder" class="w-8 h-8 text-yellow-600"></i>
-            </div>
-            <div class="text-center w-full">
-              <h3 class="text-gray-900 text-sm truncate px-1 mb-1" title="{{ folder.name }}">
-                {{ folder.name }}
-              </h3>
-            </div>
-          </div>
-        </div>
+          {% include 'storage/components/item_card.html' with item=folder item_type='folder' %}
         {% endfor %}
-      {% endif %}
-    
-      {% if files %}
+      
         {% for file in files %}
-        <div class="group relative file-item" 
-             data-file-name="{{ file.original_name }}" 
-             data-file-id="{{ file.pk }}"
-             data-file-type="{{ file.file_type }}">
-          <div class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200"
-               ondblclick="window.location.href='{% url 'download_file' file.pk %}'">
-            <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200 relative">
-              {% if file.file_type == 'pdf' %}
-                <div class="bg-red-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="file-text" class="w-8 h-8 text-red-600"></i>
-                </div>
-              {% elif file.file_type == 'image' %}
-                <div class="bg-green-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="image" class="w-8 h-8 text-green-600"></i>
-                </div>
-              {% elif file.file_type == 'archive' %}
-                <div class="bg-orange-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="archive" class="w-8 h-8 text-orange-600"></i>
-                </div>
-              {% elif file.file_type == 'document' %}
-                <div class="bg-blue-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="file-text" class="w-8 h-8 text-blue-600"></i>
-                </div>
-              {% elif file.file_type == 'spreadsheet' %}
-                <div class="bg-green-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="file-spreadsheet" class="w-8 h-8 text-green-600"></i>
-                </div>
-              {% elif file.file_type == 'presentation' %}
-                <div class="bg-purple-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="presentation" class="w-8 h-8 text-purple-600"></i>
-                </div>
-              {% elif file.file_type == 'audio' %}
-                <div class="bg-pink-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="music" class="w-8 h-8 text-pink-600"></i>
-                </div>
-              {% elif file.file_type == 'video' %}
-                <div class="bg-indigo-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="video" class="w-8 h-8 text-indigo-600"></i>
-                </div>
-              {% else %}
-                <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
-                  <i data-lucide="file" class="w-8 h-8 text-gray-600"></i>
-                </div>
-              {% endif %}
-            </div>
-            
-            <div class="text-center w-full mb-2">
-              <h3 class="text-gray-900 text-sm truncate px-1 mb-1" title="{{ file.original_name }}">
-                {{ file.original_name|truncatechars:20 }}
-              </h3>
-            </div>
-          </div>
-        </div>
+          {% include 'storage/components/item_card.html' with item=file item_type='file' %}
         {% endfor %}
-      {% endif %}
-    </div>
+      </div>
     {% else %}
     <div id="emptyArea" 
          class="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl hover:border-amber-400 transition-colors duration-200 min-h-[300px] flex flex-col items-center justify-center">

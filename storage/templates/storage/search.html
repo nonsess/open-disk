@@ -32,36 +32,11 @@
         
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
           {% for file in files %}
-          <div class="group">
-            <a href="{% url 'download_file' file.pk %}"
-               class="flex flex-col items-center p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200">
-              <div class="w-16 h-16 rounded-xl 
-                        {% if file.file_type == 'pdf' %}bg-red-100
-                        {% elif file.file_type == 'image' %}bg-green-100
-                        {% elif file.file_type == 'archive' %}bg-orange-100
-                        {% else %}bg-blue-100{% endif %} 
-                        flex items-center justify-center mb-3">
-                {% if file.file_type == 'pdf' %}
-                  <i data-lucide="file-text" class="w-8 h-8 text-red-600"></i>
-                {% elif file.file_type == 'image' %}
-                  <i data-lucide="image" class="w-8 h-8 text-green-600"></i>
-                {% elif file.file_type == 'archive' %}
-                  <i data-lucide="archive" class="w-8 h-8 text-orange-600"></i>
-                {% else %}
-                  <i data-lucide="file" class="w-8 h-8 text-blue-600"></i>
-                {% endif %}
-              </div>
-              <div class="text-center w-full">
-                <h4 class="text-gray-900 text-sm truncate px-1" title="{{ file.original_name }}">
-                  {{ file.original_name|truncatechars:20 }}
-                </h4>
-                <p class="text-xs text-gray-500 mt-1">{{ file.size|filesizeformat }}</p>
-              </div>
-            </a>
-          </div>
+            {% include 'storage/components/item_card.html' with item=file %}
           {% endfor %}
         </div>
-      {% else %}
+
+        {% else %}
         <div class="text-center py-12">
           <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
             <i data-lucide="search-x" class="w-8 h-8 text-gray-400"></i>
@@ -84,7 +59,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.querySelector('input[name="q"]');
+    const searchInput = document.querySelector('input[name="query"]');
     if (searchInput) {
         searchInput.focus();
         searchInput.select();
