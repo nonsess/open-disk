@@ -123,13 +123,11 @@ def rename_file(request: HttpRequest) -> HttpResponse:
     new_name = request.POST.get('new_name', '').strip()
     
     if not file_id or not new_name:
-        messages.error(request, 'Не указаны необходимые параметры')
         return redirect('file_list')
     
     try:
         file_id_int = int(file_id)
     except ValueError:
-        messages.error(request, 'Неверный ID файла')
         return redirect('file_list')
     
     success, message, file_obj = StorageService.rename_file(
