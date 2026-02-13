@@ -72,9 +72,11 @@
         {% if item_type == 'folder' %}
           {{ item.name|truncatechars:20 }}
         {% else %}
-          {{ item.display_name|truncatechars:20 }}
+          {% with name=item.display_name|truncatechars:18 %}
+            {{ name }}{% if item.extension and name != item.display_name %}…{% endif %}{% if item.extension %}.{{ item.extension }}{% endif %}
+          {% endwith %}
         {% endif %}
-      </h3>
+    </h3>
     </div>
   </div>
 </div>

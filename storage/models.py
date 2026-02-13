@@ -234,7 +234,10 @@ class StoredFile(models.Model):
         blank=True,
         verbose_name='MIME-тип'
     )
-    
+    extension = models.CharField(
+        max_length=10,
+        default=""
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Дата загрузки'
@@ -260,14 +263,27 @@ class StoredFile(models.Model):
         return self.display_name
     
     def save(self, *args, **kwargs):
-        if not self.display_name and self.original_name:
-            self.display_name = self.original_name
+        if self.original_name:
+            name_without_ext, ext = os.path.splitext(self.original_name)
+            if ext and len(ext) > 1:
+                self.extension = ext[1:].lower()
+            else:
+                self.extension = ""
+                name_without_ext = self.original_name
+        else:
+            self.extension = ""
+            name_without_ext = ""
+
+        if not self.display_name:
+            if self.original_name:
+                self.display_name = name_without_ext
+            else:
+                self.display_name = ""
         
         if self.file and hasattr(self.file, 'size'):
             self.size = self.file.size
             
             if not self.mime_type and self.original_name:
-                ext = os.path.splitext(self.original_name)[1].lower()
                 mime_types = {
                     '.txt': 'text/plain',
                     '.pdf': 'application/pdf',
