@@ -78,7 +78,7 @@ class StorageService:
             return False, "Папка не найдена", None
         
         try:
-            result = folder.rename(new_name)
+            folder.rename(new_name)
             return True, f"Папка переименована в '{new_name}'", folder
         except ValidationError as e:
             return False, str(e), folder
@@ -110,7 +110,6 @@ class StorageService:
         files: List[UploadedFile],
         relative_paths: List[str]
     ) -> Tuple[int, List[str]]:
-        """Загрузить файлы"""
         uploaded_count = 0
         errors = []
         
@@ -142,7 +141,7 @@ class StorageService:
                 errors.append(f"{rel_path}: {str(e)}")
             except IntegrityError:
                 errors.append(f"{rel_path}: Файл уже существует")
-            except Exception as e:
+            except Exception:
                 errors.append(f"{rel_path}: Ошибка загрузки")
         
         return uploaded_count, errors

@@ -29,5 +29,5 @@ class StorageConfig(AppConfig):
         bucket_name = settings.AWS_STORAGE_BUCKET_NAME
         try:
             s3.head_bucket(Bucket=bucket_name)
-        except ClientError as e:
+        except ClientError:
             s3.create_bucket(Bucket=bucket_name)
