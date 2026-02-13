@@ -1,19 +1,11 @@
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.urls import reverse
-from urllib.parse import quote
 
 from storage.models import Folder, StoredFile
 from storage.services import StorageService
-
-
-def _redirect_to_path(path: str) -> HttpResponseRedirect:
-    url = reverse('file_list')
-    if path:
-        url += f"?path={quote(path)}"
-    return redirect(url)
+from storage.utils import _redirect_to_path
 
 
 @login_required
@@ -72,7 +64,7 @@ def upload_file(request: HttpRequest) -> HttpResponse:
             messages.error(request, error)
             return _redirect_to_path(current_path)
         
-        uploaded_count, errors = StorageService.upload_files(
+        _, errors = StorageService.upload_files(
             request.user, files, relative_paths
         )
                 
@@ -166,7 +158,7 @@ def create_folder(request: HttpRequest) -> HttpResponse:
         messages.error(request, "Имя папки не может быть пустым")
         return _redirect_to_path(parent_path)
     
-    success, message, folder = StorageService.create_folder(
+    success, message, _ = StorageService.create_folder(
         user=request.user,
         name=name,
         parent_path=parent_path
