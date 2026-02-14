@@ -507,14 +507,12 @@ function showUnifiedModal(config) {
         deleteButtons.classList.remove('hidden');
         messageText.textContent = config.message;
         messageSubtext.textContent = config.subtext || '';
-        document.getElementById('modalItemId').value = config.itemId;
-        document.getElementById('modalItemType').value = config.itemType;
-        document.getElementById('modalAction').value = 'delete';
         
         document.getElementById('modalDeleteConfirm').onclick = () => {
             if (config.itemType === 'folder') deleteFolderConfirmed(config.itemId);
             else deleteFileConfirmed(config.itemId);
         };
+        
     } else if (config.type === 'rename' || config.type === 'create') {
         formDiv.classList.remove('hidden');
         label.textContent = config.label;
@@ -522,9 +520,20 @@ function showUnifiedModal(config) {
         input.value = config.defaultValue || '';
         submitBtn.textContent = config.submitText;
         submitBtn.className = 'flex-1 px-6 py-3 rounded-lg transition-colors ' + config.submitClass;
+        
         document.getElementById('modalItemId').value = config.itemId || '';
         document.getElementById('modalItemType').value = config.itemType;
         document.getElementById('modalAction').value = config.type;
+        
+        const modalForm = document.getElementById('modalForm');
+        if (config.type === 'create') {
+            modalForm.action = "{% url 'create_folder' %}";
+        } else {
+            modalForm.action = config.itemType === 'folder' 
+                ? "{% url 'rename_folder' %}" 
+                : "{% url 'rename_file' %}";
+        }
+        
         setTimeout(() => input.focus(), 100);
     }
     
@@ -600,12 +609,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modalForm) {
         modalForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const action = document.getElementById('modalAction').value;
+            const itemType = document.getElementById('modalItemType').value;
             const newName = document.getElementById('modalInput').value;
             const errorEl = document.getElementById('modalError');
-            
-            const error = validateModalInput('folder', newName);
+
+            const error = validateModalInput(itemType, newName);
             if (error) {
                 errorEl.textContent = error;
                 errorEl.classList.remove('hidden');
@@ -614,11 +624,18 @@ document.addEventListener('DOMContentLoaded', function() {
             errorEl.classList.add('hidden');
             
             if (action === 'create') {
-                this.submit();
-            } else {
+              const pathInput = document.getElementById('modalCurrentPath');
+              if (pathInput) {
+                  console.log('Creating folder with path:', pathInput.value);
+              }
+              this.submit();
+              return;
+            }
+
+            if (action === 'rename') {
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = document.getElementById('modalItemType').value === 'folder' 
+                form.action = itemType === 'folder' 
                     ? '{% url "rename_folder" %}' 
                     : '{% url "rename_file" %}';
                 
@@ -633,7 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const idInput = document.createElement('input');
                 idInput.type = 'hidden';
-                idInput.name = document.getElementById('modalItemType').value === 'folder' ? 'folder_id' : 'file_id';
+                idInput.name = itemType === 'folder' ? 'folder_id' : 'file_id';
                 idInput.value = document.getElementById('modalItemId').value;
                 form.appendChild(idInput);
                 
@@ -642,6 +659,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 nameInput.name = 'new_name';
                 nameInput.value = newName;
                 form.appendChild(nameInput);
+                
+                const pathInput = document.getElementById('modalCurrentPath');
+                if (pathInput && pathInput.value) {
+                    const pathCopy = document.createElement('input');
+                    pathCopy.type = 'hidden';
+                    pathCopy.name = 'path';
+                    pathCopy.value = pathInput.value;
+                    form.appendChild(pathCopy);
+                }
                 
                 document.body.appendChild(form);
                 form.submit();
