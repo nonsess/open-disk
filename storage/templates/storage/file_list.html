@@ -558,7 +558,21 @@ function deleteFolderConfirmed(folderId) {
 }
 
 function deleteFileConfirmed(fileId) {
-    window.location.href = `{% url 'delete_file' 0 %}`.replace('0', fileId);
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `{% url 'delete_file' 0 %}`.replace('0', fileId);
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken.value;
+        form.appendChild(csrfInput);
+    }
+    
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function validateModalInput(itemType, value) {
