@@ -1,0 +1,53 @@
+<div id="unifiedModal" class="modal hidden">
+    <div class="modal-content max-w-md w-full sm:max-w-lg">
+      <div class="flex items-center justify-between mb-6">
+        <h3 id="modalTitle" class="text-xl font-bold text-gray-900"></h3>
+        <button onclick="closeUnifiedModal()" class="text-gray-400 hover:text-gray-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      
+      <div id="modalMessage" class="mb-6 hidden">
+        <p id="modalMessageText" class="text-gray-700 mb-2 text-base leading-relaxed"></p>
+        <p id="modalMessageSubtext" class="text-sm text-gray-500 mt-1"></p>
+      </div>
+      
+      <form id="modalForm" method="post" class="hidden">
+        {% csrf_token %}
+        <input type="hidden" id="modalItemId" name="item_id">
+        <input type="hidden" id="modalItemType" name="item_type">
+        <input type="hidden" id="modalAction" name="action">
+        
+        <div class="mb-6">
+          <label id="modalLabel" class="block text-sm font-medium text-gray-700 mb-2"></label>
+          <input 
+            type="text" 
+            id="modalInput"
+            name="new_name"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all text-base"
+            placeholder="Введите название"
+            maxlength="255">
+          <p id="modalError" class="mt-2 text-sm text-red-600 hidden"></p>
+        </div>
+        
+        <div class="flex gap-3">
+          <button type="submit" id="modalSubmitBtn" class="flex-1 px-6 py-3 rounded-lg transition-colors text-base font-medium">
+          </button>
+          <button type="button" onclick="closeUnifiedModal()" 
+                  class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-base font-medium">
+            Отмена
+          </button>
+        </div>
+      </form>
+      
+      <div id="modalDeleteButtons" class="flex gap-3 hidden">
+        <button id="modalDeleteConfirm" class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors text-base font-medium">
+          Удалить
+        </button>
+        <button type="button" onclick="closeUnifiedModal()" 
+                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-base font-medium">
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
