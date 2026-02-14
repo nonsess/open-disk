@@ -106,12 +106,12 @@ def search_file(request: HttpRequest) -> HttpResponse:
 @login_required
 def delete_file(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == 'POST':
-        success, message = StorageService.delete_file(request.user, pk)
+        success, message, redirect_path = StorageService.delete_file(request.user, pk)
         
         if not success:
             messages.error(request, message)
 
-    return redirect('file_list')
+    return _redirect_to_path(redirect_path)
 
 
 @login_required

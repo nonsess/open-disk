@@ -150,13 +150,14 @@ class StorageService:
     def delete_file(user: User, file_id: int) -> Tuple[bool, str]:
         try:
             file_obj = StoredFile.objects.get(pk=file_id, owner=user)
+
+            redirect_path = file_obj.folder.full_path if file_obj.folder else ""
             
             file_obj.file.delete(save=False)
             
             file_obj.delete()
             
-            return True, "Файл удалён"
-            
+            return True, "Файл удалён", redirect_path
         except StoredFile.DoesNotExist:
             return False, "Файл не найден"
         except Exception as e:
