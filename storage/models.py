@@ -235,7 +235,7 @@ class StoredFile(models.Model):
         verbose_name='MIME-тип'
     )
     extension = models.CharField(
-        max_length=10,
+        max_length=50,
         default=""
     )
     created_at = models.DateTimeField(
@@ -265,20 +265,17 @@ class StoredFile(models.Model):
     def save(self, *args, **kwargs):
         if self.original_name:
             name_without_ext, ext = os.path.splitext(self.original_name)
+            
             if ext and len(ext) > 1:
                 self.extension = ext[1:].lower()
             else:
                 self.extension = ""
                 name_without_ext = self.original_name
+            
+            if not self.display_name:
+                self.display_name = name_without_ext
         else:
             self.extension = ""
-            name_without_ext = ""
-
-        if not self.display_name:
-            if self.original_name:
-                self.display_name = name_without_ext
-            else:
-                self.display_name = ""
         
         if self.file and hasattr(self.file, 'size'):
             self.size = self.file.size
@@ -300,9 +297,9 @@ class StoredFile(models.Model):
                     '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 }
                 self.mime_type = mime_types.get(ext, 'application/octet-stream')
-        
+                
         super().save(*args, **kwargs)
-    
+
     def clean(self):
         super().clean()
         

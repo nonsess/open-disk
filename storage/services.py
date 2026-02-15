@@ -128,7 +128,6 @@ class StorageService:
                     owner=user,
                     folder=folder,
                     original_name=file_name,
-                    display_name=file_name,
                     size=uploaded_file.size,
                     mime_type=uploaded_file.content_type or 'application/octet-stream'
                 )
