@@ -2,7 +2,6 @@
 
 {% block content %}
 <div class="container mx-auto max-w-3xl">
-  <!-- Хлебные крошки -->
   <nav class="flex items-center text-sm text-gray-400 mb-6" aria-label="Навигация">
     <a href="{% url 'file_list' %}" class="text-gray-900 hover:text-gold-dark flex items-center">
       <i data-lucide="home" class="w-4 h-4 mr-1"></i>
@@ -12,17 +11,10 @@
     <span class="text-gray-900 font-medium">Загрузка файлов</span>
   </nav>
 
-  <!-- Заголовок -->
   <div class="mb-8">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Загрузить файлы</h1>
-    {% if current_folder_name %}
-      <p class="text-gray-600">Файлы будут загружены в папку: <span class="font-semibold">{{ current_folder_name }}</span></p>
-    {% else %}
-      <p class="text-gray-600">Файлы будут загружены в главную папку</p>
-    {% endif %}
   </div>
 
-  <!-- Форма загрузки -->
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <form method="post" enctype="multipart/form-data" 
           id="uploadForm"
@@ -34,7 +26,6 @@
       <input type="file" id="fileInput" name="files" multiple class="hidden">
       <input type="file" id="folderInput" name="files" webkitdirectory mozdirectory msdirectory odirectory directory class="hidden">
   
-      <!-- Область загрузки -->
       <div class="p-8 border-b border-gray-200">
         <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors">
           <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
@@ -59,13 +50,8 @@
               Выбрать папку
             </button>
           </div>
-          
-          <p class="text-sm text-gray-500 mt-4">
-            Поддерживаются отдельные файлы и целые папки
-          </p>
         </div>
   
-        <!-- Список выбранных файлов -->
         <div id="fileListContainer" class="mt-6 hidden">
           <div class="flex items-center justify-between mb-3">
             <h4 class="font-medium text-gray-900">Выбранные файлы</h4>
@@ -75,10 +61,8 @@
         </div>
       </div>
   
-      <!-- Скрытые поля -->
-      <div id="hiddenInputs"></div>
+      <div id="pathsContainer"></div>
   
-      <!-- Информация о папке -->
       <div class="p-6 border-b border-gray-200">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -97,7 +81,6 @@
         </div>
       </div>
   
-      <!-- Кнопки действий -->
       <div class="p-6">
         <div class="flex gap-3">
           <button type="submit" 
@@ -130,7 +113,8 @@ function handleFiles(files, fromFolderInput = false) {
     
     selectedFilesData.push({
       file: file,
-      relativePath: relativePath
+      relativePath: relativePath,
+      id: Date.now() + Math.random().toString(36).substr(2, 9)
     });
   });
   
@@ -142,8 +126,10 @@ function updateFileList() {
   const fileList = document.getElementById('fileList');
   const uploadBtn = document.getElementById('uploadBtn');
   const fileCountSpan = document.getElementById('fileCount');
+  const pathsContainer = document.getElementById('pathsContainer');
 
   fileList.innerHTML = '';
+  pathsContainer.innerHTML = '';
 
   if (selectedFilesData.length === 0) {
     fileListContainer.classList.add('hidden');
@@ -161,6 +147,13 @@ function updateFileList() {
     const relativePath = fileData.relativePath;
     const fileSize = formatFileSize(file.size);
 
+    const pathInput = document.createElement('input');
+    pathInput.type = 'hidden';
+    pathInput.name = 'file_paths';
+    pathInput.value = relativePath;
+    pathInput.setAttribute('data-file-id', fileData.id);
+    pathsContainer.appendChild(pathInput);
+
     const div = document.createElement('div');
     div.className = "flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200";
     div.innerHTML = `
@@ -174,7 +167,7 @@ function updateFileList() {
         <p class="text-xs text-gray-500 mt-0.5">${fileSize}</p>
       </div>
       <button type="button" 
-              onclick="removeFile(${index})"
+              onclick="removeFile('${fileData.id}')"
               class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
@@ -187,8 +180,11 @@ function updateFileList() {
   }
 }
 
-function removeFile(index) {
-  selectedFilesData.splice(index, 1);
+function removeFile(fileId) {
+  const index = selectedFilesData.findIndex(item => item.id === fileId);
+  if (index !== -1) {
+    selectedFilesData.splice(index, 1);
+  }
   updateFileList();
   document.getElementById('fileInput').value = '';
   document.getElementById('folderInput').value = '';

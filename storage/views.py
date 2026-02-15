@@ -50,13 +50,18 @@ def upload_file(request: HttpRequest) -> HttpResponse:
                 current_folder_name = current_folder.name
         
         files = request.FILES.getlist('files')
+        file_paths = request.POST.getlist('file_paths')
+        
+        if len(files) != len(file_paths):
+            messages.error(request, "Ошибка при передаче структуры файлов")
+            return _redirect_to_path(current_path)
         
         relative_paths = []
-        for file_obj in files:
+        for file_obj, file_path in zip(files, file_paths):
             if current_folder and current_folder.full_path:
-                full_path = f"{current_folder.full_path}/{file_obj.name}"
+                full_path = f"{current_folder.full_path}/{file_path}"
             else:
-                full_path = file_obj.name
+                full_path = file_path
             relative_paths.append(full_path)
         
         error = StorageService.validate_upload_data(files, relative_paths)
