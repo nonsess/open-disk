@@ -1,22 +1,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mx-auto max-w-6xl">
+<div class="container mx-auto max-w-6xl px-4 sm:px-6">
   <div class="mb-8">
-    <form method="get" action="{% url 'search_file' %}" class="mb-6">
-      <div class="flex gap-3">
+    <form method="get" action="{% url 'search_file' %}" class="mb-8">
+      <div class="flex flex-col sm:flex-row gap-3">
         <div class="flex-1 relative">
           <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
           <input type="text"
                  name="query"
                  value="{{ query|default:'' }}"
-                 placeholder="Поиск файлов..."
-                 class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
+                 placeholder="Введите название файла..."
+                 class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 transition-colors"
                  autocomplete="off"
                  autofocus>
         </div>
         <button type="submit"
-                class="bg-gradient-to-r from-amber-500 to-amber-700 text-white px-6 py-3 rounded-lg hover:opacity-90 transition-all font-medium">
+                class="bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium sm:w-auto w-full">
           Найти
         </button>
       </div>
@@ -24,46 +24,95 @@
     
     {% if query %}
       {% if files %}
-        <div class="mb-2">
+        <div class="mb-4 pb-3 border-b border-gray-200">
           <h2 class="text-lg font-medium text-gray-900">
-            Найдено {{ files|length }} шт.
+            Найдено {{ files|length }} {{ files|length|pluralize:"файл,файла,файлов" }}
           </h2>
         </div>
         
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-5">
           {% for file in files %}
-            {% include 'storage/components/item_card.html' with item=file %}
+            {% include 'storage/components/item_card.html' with item=file item_type='file' %}
           {% endfor %}
         </div>
 
-        {% else %}
-        <div class="text-center py-12">
-          <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-            <i data-lucide="search-x" class="w-8 h-8 text-gray-400"></i>
+      {% else %}
+        <div class="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+          <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="search-x" class="w-10 h-10 text-gray-400"></i>
           </div>
-          <h3 class="text-lg font-medium text-gray-900 mb-2">Файлы не найдены</h3>
-          <p class="text-gray-500">Попробуйте другой запрос</p>
+          <h3 class="text-lg font-medium text-gray-900 mb-1">Файлы не найдены</h3>
+          <p class="text-gray-500 text-sm mb-4">По запросу «{{ query }}»</p>
+          <button onclick="document.querySelector('input[name=\"query\"]').focus()" 
+                  class="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2">
+            Попробовать другой запрос
+          </button>
         </div>
       {% endif %}
     {% else %}
-      <div class="text-center py-12">
-        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-          <i data-lucide="search" class="w-8 h-8 text-gray-400"></i>
+      <div class="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+        <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <i data-lucide="search" class="w-10 h-10 text-gray-400"></i>
         </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Поиск файлов</h3>
-        <p class="text-gray-500">Введите название файла для поиска</p>
+        <h3 class="text-lg font-medium text-gray-900 mb-1">Поиск файлов</h3>
+        <p class="text-gray-500 text-sm">Введите название файла для поиска</p>
       </div>
     {% endif %}
   </div>
 </div>
+
+{% if not query %}
+<div class="container mx-auto max-w-6xl px-4 sm:px-6 mt-4">
+  <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+    <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+      <i data-lucide="info" class="w-4 h-4 text-gray-500"></i>
+      О поиске
+    </h4>
+    <ul class="text-sm text-gray-600 space-y-2">
+      <li class="flex items-start gap-2">
+        <span class="text-gray-400">•</span>
+        <span>Поиск работает только по <span class="font-medium">файлам</span></span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-gray-400">•</span>
+        <span>Можно искать по названию</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-gray-400">•</span>
+        <span>Регистр не важен</span>
+      </li>
+      <li class="flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-lg mt-2">
+        <i data-lucide="info" class="w-4 h-4 flex-shrink-0"></i>
+        <span>Папки не участвуют в поиске</span>
+      </li>
+    </ul>
+  </div>
+</div>
+{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.querySelector('input[name="query"]');
     if (searchInput) {
         searchInput.focus();
-        searchInput.select();
+        if (searchInput.value) {
+            searchInput.select();
+        }
     }
+    
+    searchInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.form.submit();
+        }
+    });
+    
+    searchInput?.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && this.value) {
+            this.value = '';
+            e.preventDefault();
+        }
+    });
 });
 </script>
 {% endblock %}

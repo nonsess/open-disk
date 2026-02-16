@@ -1,18 +1,20 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mx-auto max-w-3xl">
-  <nav class="flex items-center text-sm text-gray-400 mb-6" aria-label="Навигация">
-    <a href="{% url 'file_list' %}" class="text-gray-900 hover:text-gold-dark flex items-center">
-      <i data-lucide="home" class="w-4 h-4 mr-1"></i>
-      Главная
+<div class="container mx-auto max-w-3xl px-4 sm:px-6">
+  <nav class="flex items-center text-sm text-gray-500 mb-6" aria-label="Навигация">
+    <a href="{% url 'file_list' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}" 
+       class="text-gray-700 hover:text-gray-900 flex items-center">
+      <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>
+      Назад
     </a>
-    <i data-lucide="chevron-right" class="w-3 h-3 mx-2 text-gray-300"></i>
+    <i data-lucide="chevron-right" class="w-4 h-4 mx-2 text-gray-300"></i>
     <span class="text-gray-900 font-medium">Загрузка файлов</span>
   </nav>
 
-  <div class="mb-8">
-    <h1 class="text-2xl font-bold text-gray-900 mb-2">Загрузить файлы</h1>
+  <div class="mb-6">
+    <h1 class="text-2xl font-semibold text-gray-900">Загрузить файлы</h1>
+    <p class="text-sm text-gray-500 mt-1">Выберите файлы или перетащите их в область загрузки</p>
   </div>
 
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -26,26 +28,26 @@
       <input type="file" id="fileInput" name="files" multiple class="hidden">
       <input type="file" id="folderInput" name="files" webkitdirectory mozdirectory msdirectory odirectory directory class="hidden">
   
-      <div class="p-8 border-b border-gray-200">
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+      <div class="p-6 sm:p-8 border-b border-gray-200">
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors">
           <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-            <i data-lucide="upload-cloud" class="w-8 h-8 text-gray-400"></i>
+            <i data-lucide="upload-cloud" class="w-8 h-8 text-gray-500"></i>
           </div>
           
-          <h3 class="text-lg font-medium text-gray-900 mb-3">Перетащите файлы сюда</h3>
-          <p class="text-gray-600 mb-4">или</p>
+          <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-2">Перетащите файлы сюда</h3>
+          <p class="text-sm text-gray-500 mb-4">или</p>
           
           <div class="flex flex-col sm:flex-row gap-3 justify-center">
             <button type="button"
                     onclick="document.getElementById('fileInput').click()"
-                    class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-2.5 rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all font-medium text-sm">
+                    class="inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm">
               <i data-lucide="file" class="w-4 h-4"></i>
               Выбрать файлы
             </button>
             
             <button type="button"
                     onclick="document.getElementById('folderInput').click()"
-                    class="inline-flex items-center justify-center gap-2 bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-all font-medium text-sm">
+                    class="inline-flex items-center justify-center gap-2 bg-white text-gray-700 px-4 py-2.5 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors font-medium text-sm">
               <i data-lucide="folder" class="w-4 h-4"></i>
               Выбрать папку
             </button>
@@ -54,23 +56,21 @@
   
         <div id="fileListContainer" class="mt-6 hidden">
           <div class="flex items-center justify-between mb-3">
-            <h4 class="font-medium text-gray-900">Выбранные файлы</h4>
-            <span class="text-sm text-gray-500" id="fileCount">0</span>
+            <h4 class="text-sm font-medium text-gray-700">Выбрано файлов:</h4>
+            <span class="text-sm text-gray-600" id="fileCount">0</span>
           </div>
           <div id="fileList" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
         </div>
       </div>
   
-      <div id="pathsContainer"></div>
-  
-      <div class="p-6 border-b border-gray-200">
+      <div class="p-6 border-b border-gray-200 bg-gray-50/50">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-            <i data-lucide="folder" class="w-5 h-5 text-blue-500"></i>
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="folder" class="w-5 h-5 text-gray-600"></i>
           </div>
-          <div>
-            <p class="text-sm font-medium text-gray-900 mb-1">Папка назначения</p>
-            <p class="text-sm text-gray-600">
+          <div class="min-w-0">
+            <p class="text-xs text-gray-500 mb-1">Папка назначения</p>
+            <p class="text-sm font-medium text-gray-900 truncate">
               {% if current_folder_name %}
                 {{ current_folder_name }}
               {% else %}
@@ -82,22 +82,23 @@
       </div>
   
       <div class="p-6">
-        <div class="flex gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
           <button type="submit" 
                   id="uploadBtn" 
-                  class="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-3 rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex-1 inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled>
             <i data-lucide="upload" class="w-4 h-4"></i>
             Загрузить
           </button>
           
           <a href="{% url 'file_list' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}" 
-             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-            <i data-lucide="x" class="w-4 h-4"></i>
+             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700">
             Отмена
           </a>
         </div>
       </div>
+
+      <div id="pathsContainer"></div>
     </form>
   </div>
 </div>
@@ -111,14 +112,25 @@ function handleFiles(files, fromFolderInput = false) {
   newFiles.forEach(file => {
     let relativePath = fromFolderInput && file.webkitRelativePath ? file.webkitRelativePath : file.name;
     
-    selectedFilesData.push({
-      file: file,
-      relativePath: relativePath,
-      id: Date.now() + Math.random().toString(36).substr(2, 9)
-    });
+    const isDuplicate = selectedFilesData.some(existingFile => 
+      existingFile.file.name === file.name && 
+      existingFile.file.size === file.size &&
+      existingFile.file.lastModified === file.lastModified
+    );
+    
+    if (!isDuplicate) {
+      selectedFilesData.push({
+        file: file,
+        relativePath: relativePath,
+        id: Date.now() + Math.random().toString(36).substr(2, 9) + Math.random()
+      });
+    }
   });
   
   updateFileList();
+  
+  document.getElementById('fileInput').value = '';
+  document.getElementById('folderInput').value = '';
 }
 
 function updateFileList() {
@@ -145,30 +157,85 @@ function updateFileList() {
   selectedFilesData.forEach((fileData, index) => {
     const file = fileData.file;
     const relativePath = fileData.relativePath;
-    const fileSize = formatFileSize(file.size);
-
+    
     const pathInput = document.createElement('input');
     pathInput.type = 'hidden';
     pathInput.name = 'file_paths';
     pathInput.value = relativePath;
     pathInput.setAttribute('data-file-id', fileData.id);
     pathsContainer.appendChild(pathInput);
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.name = 'files';
+    fileInput.style.display = 'none';
+    fileInput.multiple = true;
+    
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+    
+    fileInput.setAttribute('data-file-id', fileData.id);
+    fileInput.setAttribute('data-file-index', index);
+    pathsContainer.appendChild(fileInput);
 
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    const fileSize = formatFileSize(file.size);
+    
+    let iconBg = 'bg-gray-100';
+    let iconColor = 'text-gray-600';
+    let iconName = 'file';
+
+    if (file.type.startsWith('image/')) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'image';
+    } else if (file.type === 'application/pdf') {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'file-text';
+    } else if (file.type.includes('zip') || file.type.includes('archive') || 
+              ['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExt)) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'archive';
+    } else if (file.type.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(fileExt)) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'file-spreadsheet';
+    } else if (file.type.includes('presentation') || ['ppt', 'pptx'].includes(fileExt)) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'presentation';
+    } else if (file.type.includes('audio') || ['mp3', 'wav', 'ogg'].includes(fileExt)) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'music';
+    } else if (file.type.includes('video') || ['mp4', 'avi', 'mov'].includes(fileExt)) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'video';
+    } else if (file.type.includes('document') || ['doc', 'docx', 'txt'].includes(fileExt)) {
+      iconBg = 'bg-gray-100';
+      iconColor = 'text-gray-700';
+      iconName = 'file-text';
+    }
+    
     const div = document.createElement('div');
-    div.className = "flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200";
+    div.className = "flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors";
     div.innerHTML = `
-      <div class="w-8 h-8 rounded-lg ${getFileIconColor(file.type)} flex items-center justify-center flex-shrink-0">
-        <i data-lucide="${getFileIcon(file.type)}" class="w-4 h-4 ${getFileIconTextColor(file.type)}"></i>
+      <div class="w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0">
+        <i data-lucide="${iconName}" class="w-5 h-5 ${iconColor}"></i>
       </div>
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-gray-900 truncate" title="${relativePath}">
+        <p class="text-sm text-gray-900 truncate font-medium" title="${relativePath}">
           ${relativePath}
         </p>
         <p class="text-xs text-gray-500 mt-0.5">${fileSize}</p>
       </div>
       <button type="button" 
               onclick="removeFile('${fileData.id}')"
-              class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     `;
@@ -185,9 +252,11 @@ function removeFile(fileId) {
   if (index !== -1) {
     selectedFilesData.splice(index, 1);
   }
+  
+  const inputs = document.querySelectorAll(`[data-file-id="${fileId}"]`);
+  inputs.forEach(input => input.remove());
+  
   updateFileList();
-  document.getElementById('fileInput').value = '';
-  document.getElementById('folderInput').value = '';
 }
 
 function formatFileSize(bytes) {
@@ -198,55 +267,47 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function getFileIcon(mimeType) {
-  if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType === 'application/pdf') return 'file-text';
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'archive';
-  return 'file';
-}
-
-function getFileIconColor(mimeType) {
-  if (mimeType.startsWith('image/')) return 'bg-green-100';
-  if (mimeType === 'application/pdf') return 'bg-red-100';
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bg-orange-100';
-  return 'bg-gray-100';
-}
-
-function getFileIconTextColor(mimeType) {
-  if (mimeType.startsWith('image/')) return 'text-green-600';
-  if (mimeType === 'application/pdf') return 'text-red-600';
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'text-orange-600';
-  return 'text-gray-600';
-}
-
 document.addEventListener('DOMContentLoaded', function() {
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const folderInput = document.getElementById('folderInput');
+  const uploadForm = document.getElementById('uploadForm');
 
-  fileInput.addEventListener('change', (e) => handleFiles(e.target.files, false));
-  folderInput.addEventListener('change', (e) => handleFiles(e.target.files, true));
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files, false);
+    e.target.value = '';
+  });
+  
+  folderInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files, true);
+    e.target.value = '';
+  });
 
   ['dragenter', 'dragover'].forEach(eventName => {
     dropZone.addEventListener(eventName, (e) => {
       e.preventDefault();
-      dropZone.classList.add('border-amber-400', 'bg-amber-50');
+      dropZone.classList.add('border-gray-500', 'bg-gray-50');
     });
   });
 
   ['dragleave', 'drop'].forEach(eventName => {
     dropZone.addEventListener(eventName, (e) => {
       e.preventDefault();
-      dropZone.classList.remove('border-amber-400', 'bg-amber-50');
+      dropZone.classList.remove('border-gray-500', 'bg-gray-50');
     });
   });
 
   dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
     const files = e.dataTransfer.files;
     handleFiles(files, false);
   });
 
-  document.getElementById('uploadForm').addEventListener('submit', function(e) {
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  uploadForm.addEventListener('submit', function(e) {
     if (selectedFilesData.length === 0) {
       e.preventDefault();
       alert('Выберите файлы для загрузки');
@@ -254,8 +315,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     const uploadBtn = document.getElementById('uploadBtn');
-    const originalHTML = uploadBtn.innerHTML;
-    
     uploadBtn.disabled = true;
     uploadBtn.innerHTML = `
       <i data-lucide="loader" class="w-4 h-4 animate-spin"></i>
