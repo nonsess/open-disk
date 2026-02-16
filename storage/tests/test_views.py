@@ -150,7 +150,7 @@ class UploadFileViewTests(TestCase):
     def test_upload_file_to_folder(self):
         test_file = SimpleUploadedFile('image.jpg', b'\xff\xd8\xff', 'image/jpeg')
         
-        response = self.client.post(reverse('upload_file'), {
+        self.client.post(reverse('upload_file'), {
             'files': [test_file],
             'file_paths': ['Photos/image.jpg'],
             'current_path': ''

@@ -48,7 +48,7 @@ class StorageServiceTests(TestCase):
     
     def test_get_folder_contents_root(self):
         test_file = SimpleUploadedFile('file.txt', b'Content', 'text/plain')
-        file = StoredFile.objects.create(
+        StoredFile.objects.create(
             owner=self.user,
             original_name='file.txt',
             file=test_file
@@ -270,7 +270,7 @@ class StorageServiceTests(TestCase):
         self.assertTrue(Folder.objects.filter(id=folder_id, name='NewName').exists())
     
     def test_rename_folder_duplicate_name(self):
-        folder1 = Folder.objects.create(owner=self.user, name='Folder1')
+        Folder.objects.create(owner=self.user, name='Folder1')
         folder2 = Folder.objects.create(owner=self.user, name='Folder2')
         
         success, message, updated_folder = StorageService.rename_folder(
@@ -328,7 +328,7 @@ class StorageServiceTests(TestCase):
         file1 = SimpleUploadedFile('file1.txt', b'Content1', 'text/plain')
         file2 = SimpleUploadedFile('file2.txt', b'Content2', 'text/plain')
         
-        stored_file1 = StoredFile.objects.create(
+        StoredFile.objects.create(
             owner=self.user,
             original_name='file1.txt',
             file=file1
