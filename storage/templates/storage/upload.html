@@ -1,15 +1,13 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mx-auto max-w-3xl px-4 sm:px-6">
+<div class="container mx-auto md:max-w-3xl">
   <nav class="flex items-center text-sm text-gray-500 mb-6" aria-label="Навигация">
     <a href="{% url 'file_list' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}" 
        class="text-gray-700 hover:text-gray-900 flex items-center">
       <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>
       Назад
     </a>
-    <i data-lucide="chevron-right" class="w-4 h-4 mx-2 text-gray-300"></i>
-    <span class="text-gray-900 font-medium">Загрузка файлов</span>
   </nav>
 
   <div class="mb-6">
