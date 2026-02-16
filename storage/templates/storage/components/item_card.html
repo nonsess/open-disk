@@ -1,13 +1,15 @@
 <div 
-  class="group {{ item_type }}-item"
+  class="group {{ item_type }}-item tooltip-container"
   {% if item_type == 'folder' %}
     data-folder-id="{{ item.pk }}"
     data-folder-name="{{ item.name }}"
     data-folder-path="{{ item.full_path }}"
+    title="{{ item.name }}"
   {% else %}
     data-file-id="{{ item.pk }}"
     data-file-name="{{ item.display_name }}"
     data-file-type="{{ item.file_type }}"
+    title="{{ item.display_name }}"
   {% endif %}
 >
   <div 
