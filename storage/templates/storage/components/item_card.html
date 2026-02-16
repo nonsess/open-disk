@@ -20,41 +20,41 @@
   >
     <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-200">
       {% if item_type == 'folder' %}
-        <div class="bg-gradient-to-br from-yellow-100 to-yellow-50 w-full h-full rounded-xl flex items-center justify-center">
-          <i data-lucide="folder" class="w-8 h-8 text-yellow-600"></i>
+        <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+          <i data-lucide="folder" class="w-8 h-8 text-gray-600"></i>
         </div>
       {% else %}
         {% if item.file_type == 'pdf' %}
-          <div class="bg-red-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="file-text" class="w-8 h-8 text-red-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file-text" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'image' %}
-          <div class="bg-green-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="image" class="w-8 h-8 text-green-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="image" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'archive' %}
-          <div class="bg-orange-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="archive" class="w-8 h-8 text-orange-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="archive" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'document' %}
-          <div class="bg-blue-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="file-text" class="w-8 h-8 text-blue-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file-text" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'spreadsheet' %}
-          <div class="bg-green-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="file-spreadsheet" class="w-8 h-8 text-green-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="file-spreadsheet" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'presentation' %}
-          <div class="bg-purple-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="presentation" class="w-8 h-8 text-purple-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="presentation" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'audio' %}
-          <div class="bg-pink-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="music" class="w-8 h-8 text-pink-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="music" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% elif item.file_type == 'video' %}
-          <div class="bg-indigo-100 w-full h-full rounded-xl flex items-center justify-center">
-            <i data-lucide="video" class="w-8 h-8 text-indigo-600"></i>
+          <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
+            <i data-lucide="video" class="w-8 h-8 text-gray-700"></i>
           </div>
         {% else %}
           <div class="bg-gray-100 w-full h-full rounded-xl flex items-center justify-center">
@@ -66,7 +66,7 @@
 
     <div class="text-center w-full">
       <h3 
-        class="text-gray-900 text-sm truncate px-1 mb-1" 
+        class="text-gray-900 text-sm truncate px-1" 
         title="{% if item_type == 'folder' %}{{ item.name }}{% else %}{{ item.original_name }}{% endif %}"
       >
         {% if item_type == 'folder' %}
@@ -76,7 +76,7 @@
             {{ name }}{% if item.extension and name != item.display_name %}…{% endif %}{% if item.extension %}.{{ item.extension }}{% endif %}
           {% endwith %}
         {% endif %}
-    </h3>
+      </h3>
     </div>
   </div>
 </div>

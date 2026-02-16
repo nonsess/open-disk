@@ -1,26 +1,27 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mx-auto" id="fileManager">
+<div class="container mx-auto px-4 sm:px-6" id="fileManager">
+  
   {% if current_folder_name %}
-  <div class="mb-4">
-    <nav class="flex items-center text-sm text-gray-400" aria-label="Навигация">
-      <a href="{% url 'file_list' %}" class="text-gray-900 hover:text-gold-dark flex items-center">
+  <div class="mb-6">
+    <nav class="flex items-center text-sm text-gray-500 flex-wrap" aria-label="Навигация">
+      <a href="{% url 'file_list' %}" class="text-gray-700 hover:text-gray-900 flex items-center">
         Мои файлы
       </a>
       
       {% if breadcrumbs|length > 1 %}
-        <i data-lucide="chevron-right" class="w-3 h-3 mx-0.5"></i>
+        <i data-lucide="chevron-right" class="w-4 h-4 mx-1 text-gray-400"></i>
         
         {% for crumb in breadcrumbs %}
           {% if not forloop.first and not forloop.last %}
             <a href="{% url 'file_list' %}{% if crumb.path %}?path={{ crumb.path|urlencode }}{% endif %}" 
-               class="hover:text-black truncate max-w-[120px]">
+               class="hover:text-gray-900 truncate max-w-[100px] sm:max-w-[150px]">
               {{ crumb.name }}
             </a>
-            <i data-lucide="chevron-right" class="w-3 h-3 mx-0.5"></i>
+            <i data-lucide="chevron-right" class="w-4 h-4 mx-1 text-gray-400"></i>
           {% elif forloop.last %}
-            <span class="text-gray-900 font-medium truncate max-w-[120px]">
+            <span class="text-gray-900 font-medium truncate max-w-[150px] sm:max-w-[200px]">
               {{ crumb.name }}
             </span>
           {% endif %}
@@ -30,43 +31,42 @@
   </div>
   {% endif %}
 
-  <div class="flex flex-col sm:flex-row justify-between items-end border-2 border-transparent pb-2 border-b-black/10 gap-4 mb-6">
-    <div>
-      <h1 class="text-3xl font-medium text-gray-900">
-        {% if current_folder_name %}
-          {{ current_folder_name|truncatechars:60 }}
-        {% else %}
-          Мои файлы
-        {% endif %}
-      </h1>
-    </div>
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 mb-6 border-b border-gray-200">
+    <h1 class="text-2xl sm:text-3xl font-semibold text-gray-900">
+      {% if current_folder_name %}
+        {{ current_folder_name|truncatechars:50 }}
+      {% else %}
+        Мои файлы
+      {% endif %}
+    </h1>
     
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2 w-full sm:w-auto">
       <a href="{% url 'upload_file' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}" 
-         class="flex text-sm items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-700 text-white px-3 py-2 rounded-lg hover:opacity-90 transition-all shadow-sm">
-        <i data-lucide="upload" class="w-3 h-3"></i>
-        Загрузить
+         class="flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex-1 sm:flex-none">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        <span>Загрузить</span>
       </a>
       
       <button onclick="showCreateFolderModal()"
-        class="flex text-sm items-center gap-1 bg-white text-gray-700 px-3 py-2 rounded-lg border border-gray-300 hover:border-gold hover:text-gold transition-all">
-        <i data-lucide="folder-plus" class="w-3 h-3"></i>
-        Новая папка
+        class="flex items-center justify-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-colors flex-1 sm:flex-none">
+        <i data-lucide="folder-plus" class="w-4 h-4"></i>
+        <span>Новая папка</span>
       </button>
       
       {% if current_folder %}
         <button onclick="showDeleteFolderModal('{{ current_folder.pk }}', '{{ current_folder.name|escapejs }}')"
-                class="flex text-sm items-center gap-1 bg-white text-red-600 px-3 py-2 rounded-lg border border-red-200 hover:bg-red-50 transition-all">
-          <i data-lucide="trash-2" class="w-3 h-3"></i>
-          Удалить папку
+                class="flex items-center justify-center gap-2 bg-white text-red-600 px-4 py-2 rounded-lg text-sm font-medium border border-red-200 hover:bg-red-50 transition-colors flex-1 sm:flex-none">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Удалить папку</span>
+          <span class="sm:hidden">Удалить</span>
         </button>
       {% endif %}
     </div>
   </div>
 
-  <div id="filesContainer" class="relative min-h-[400px]">
+  <div id="filesContainer" class="relative min-h-[300px]">
     {% if folders or files %}
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-5">
         {% for folder in folders %}
           {% include 'storage/components/item_card.html' with item=folder item_type='folder' %}
         {% endfor %}
@@ -77,93 +77,99 @@
       </div>
     {% else %}
     <div id="emptyArea" 
-         class="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl min-h-[300px] flex flex-col items-center justify-center">
-      <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-        <i data-lucide="folder-open" class="w-12 h-12 text-gray-400"></i>
+         class="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl min-h-[300px] flex flex-col items-center justify-center bg-gray-50/50">
+      <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="folder-open" class="w-10 h-10 text-gray-400"></i>
       </div>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">Папка пуста</h3>
-      <p class="text-gray-500">Добавьте файлы или создайте папки</p>
-      <p class="text-gray-400 text-sm mt-4">Нажмите правой кнопкой мыши для создания папки</p>
+      <h3 class="text-lg font-medium text-gray-900 mb-1">Папка пуста</h3>
+      <p class="text-gray-500 text-sm mb-4">Добавьте файлы или создайте папки</p>
+      <button onclick="showCreateFolderModal()" class="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2">
+        Создать папку
+      </button>
     </div>
     {% endif %}
   </div>
 </div>
 
-<div id="contextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
+<div id="contextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] py-1">
   <button onclick="showCreateFolderModal(); hideAllMenus()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
     <i data-lucide="folder-plus" class="w-4 h-4 text-gray-500"></i>
     <span>Новая папка</span>
   </button>
   
   <a href="{% url 'upload_file' %}{% if current_path %}?path={{ current_path|urlencode }}{% endif %}" 
-     class="block px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+     class="block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
      onclick="hideAllMenus()">
     <i data-lucide="upload" class="w-4 h-4 text-gray-500"></i>
     <span>Загрузить файл</span>
   </a>
   
-  <div class="border-t border-gray-200"></div>
+  <div class="border-t border-gray-100 my-1"></div>
   
   <button onclick="location.reload(); hideAllMenus()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
     <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-500"></i>
     <span>Обновить</span>
   </button>
 </div>
 
-<div id="folderContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
+<div id="folderContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] py-1">
   <button onclick="openSelectedFolder()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
     <i data-lucide="folder-open" class="w-4 h-4 text-gray-500"></i>
     <span>Открыть</span>
   </button>
   
   <button onclick="renameSelectedFolder()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
     <i data-lucide="edit" class="w-4 h-4 text-gray-500"></i>
     <span>Переименовать</span>
   </button>
   
+  <div class="border-t border-gray-100 my-1"></div>
+  
   <button onclick="deleteSelectedFolder()" 
-          class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3">
     <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
     <span>Удалить</span>
   </button>
 </div>
 
-<div id="fileContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
+<div id="fileContextMenu" class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] py-1">
   <button onclick="downloadSelectedFile()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
     <i data-lucide="download" class="w-4 h-4 text-gray-500"></i>
     <span>Скачать</span>
   </button>
   
   <button onclick="renameSelectedFile()" 
-          class="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
     <i data-lucide="edit" class="w-4 h-4 text-gray-500"></i>
     <span>Переименовать</span>
   </button>
   
+  <div class="border-t border-gray-100 my-1"></div>
+  
   <button onclick="deleteSelectedFile()" 
-          class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3">
+          class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3">
     <i data-lucide="trash-2" class="w-4 h-4 text-red-500"></i>
     <span>Удалить</span>
   </button>
 </div>
 
 <div id="unifiedModal" class="modal hidden">
-  <div class="modal-content max-w-md w-full sm:max-w-lg">
-    <div class="flex items-center justify-between mb-6">
-      <h3 id="modalTitle" class="text-xl font-bold text-gray-900"></h3>
-      <button onclick="closeUnifiedModal()" class="text-gray-400 hover:text-gray-600">
+  <div class="modal-content max-w-md w-full">
+    <div class="flex items-center justify-between mb-5">
+      <h3 id="modalTitle" class="text-xl font-semibold text-gray-900"></h3>
+      <button onclick="closeUnifiedModal()" class="text-gray-400 hover:text-gray-600 p-1">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
     
     <div id="modalMessage" class="mb-6 hidden">
-      <p id="modalMessageText" class="text-gray-700 mb-2 text-base leading-relaxed"></p>
-      <p id="modalMessageSubtext" class="text-sm text-gray-500 mt-1"></p>
+      <p id="modalMessageText" class="text-gray-700 mb-1"></p>
+      <p id="modalMessageSubtext" class="text-sm text-gray-500"></p>
     </div>
     
     <form id="modalForm" method="post">
@@ -173,34 +179,34 @@
       <input type="hidden" id="modalAction" name="action">
       <input type="hidden" id="modalCurrentPath" name="path" value="{{ current_path }}">
       
-      <div class="mb-6">
+      <div class="mb-5">
         <label id="modalLabel" class="block text-sm font-medium text-gray-700 mb-2"></label>
         <input 
           type="text" 
           id="modalInput"
           name="name"
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent transition-all text-base"
+          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 text-base"
           placeholder="Введите название"
           maxlength="255">
         <p id="modalError" class="mt-2 text-sm text-red-600 hidden"></p>
       </div>
       
-      <div class="flex gap-3">
-        <button type="submit" id="modalSubmitBtn" class="flex-1 px-6 py-3 rounded-lg transition-colors text-base font-medium">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button type="submit" id="modalSubmitBtn" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 transition-colors">
         </button>
         <button type="button" onclick="closeUnifiedModal()" 
-                class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-base font-medium">
+                class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
           Отмена
         </button>
       </div>
     </form>
     
-    <div id="modalDeleteButtons" class="flex gap-3 hidden">
-      <button id="modalDeleteConfirm" class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors text-base font-medium">
+    <div id="modalDeleteButtons" class="flex flex-col sm:flex-row gap-3 hidden">
+      <button id="modalDeleteConfirm" class="flex-1 bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
         Удалить
       </button>
       <button type="button" onclick="closeUnifiedModal()" 
-              class="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-base font-medium">
+              class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
         Отмена
       </button>
     </div>
@@ -219,7 +225,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 16px;
 }
 
 .modal.hidden {
@@ -229,66 +235,28 @@
 .modal-content {
   background: white;
   border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: modalSlideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  max-width: 640px;
+  padding: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  animation: modalFadeIn 0.2s ease-out;
   width: 90vw;
+  max-width: 500px;
 }
 
-@media (min-width: 640px) {
-  .modal-content {
-    width: auto;
-  }
-}
-
-#modalInput {
-  min-height: 44px;
-  font-size: 16px;
-}
-
-@keyframes modalSlideIn {
+@keyframes modalFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-#contextMenu,
-#folderContextMenu,
-#fileContextMenu {
-  animation: fadeInUp 0.15s ease-out;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
 .selected-item {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  background-color: #f3f4f6 !important;
   border-radius: 12px !important;
 }
-
-.bg-red-100 { background-color: #fee2e2; }
-.bg-green-100 { background-color: #dcfce7; }
-.bg-blue-100 { background-color: #dbeafe; }
-.bg-orange-100 { background-color: #ffedd5; }
-.bg-purple-100 { background-color: #f3e8ff; }
-.bg-pink-100 { background-color: #fce7f3; }
-.bg-indigo-100 { background-color: #e0e7ff; }
 </style>
 
 <script>
@@ -406,8 +374,7 @@ function renameSelectedFolder() {
         label: 'Новое имя папки',
         placeholder: 'Введите новое название',
         defaultValue: selectedFolder.name,
-        submitText: 'Переименовать',
-        submitClass: 'bg-gradient-to-r from-amber-500 to-amber-700 text-white hover:opacity-90'
+        submitText: 'Переименовать'
     });
 }
 
@@ -445,8 +412,7 @@ function renameSelectedFile() {
         label: 'Новое имя файла',
         placeholder: 'Введите новое название',
         defaultValue: nameWithoutExt,
-        submitText: 'Переименовать',
-        submitClass: 'bg-gradient-to-r from-amber-500 to-amber-700 text-white hover:opacity-90'
+        submitText: 'Переименовать'
     });
 }
 
@@ -519,7 +485,6 @@ function showUnifiedModal(config) {
         input.placeholder = config.placeholder;
         input.value = config.defaultValue || '';
         submitBtn.textContent = config.submitText;
-        submitBtn.className = 'flex-1 px-6 py-3 rounded-lg transition-colors ' + config.submitClass;
         
         document.getElementById('modalItemId').value = config.itemId || '';
         document.getElementById('modalItemType').value = config.itemType;
@@ -743,8 +708,7 @@ function showCreateFolderModal() {
         itemType: 'folder',
         label: 'Имя папки',
         placeholder: 'Введите название папки',
-        submitText: 'Создать',
-        submitClass: 'bg-gradient-to-r from-amber-500 to-amber-700 text-white hover:opacity-90'
+        submitText: 'Создать'
     });
 }
 </script>
