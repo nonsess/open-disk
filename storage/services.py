@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import UploadedFile
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from storage.models import Folder, StoredFile
 
@@ -113,42 +112,37 @@ class StorageService:
     ) -> Tuple[int, List[str]]:
         uploaded_count = 0
         errors = []
-
-        def _upload_single_file(file_obj: UploadedFile, rel_path: str):
+        
+        for uploaded_file, rel_path in zip(files, relative_paths):
             try:
                 folder_path = os.path.dirname(rel_path)
                 file_name = os.path.basename(rel_path)
+                
                 StoredFile._validate_filename(file_name)
-
+                
                 folder = None
                 if folder_path:
                     folder = Folder.find_or_create_by_path(user, folder_path)
-
+                
                 stored_file = StoredFile(
                     owner=user,
                     folder=folder,
                     original_name=file_name,
-                    size=file_obj.size,
-                    mime_type=file_obj.content_type or 'application/octet-stream'
+                    size=uploaded_file.size,
+                    mime_type=uploaded_file.content_type or 'application/octet-stream'
                 )
-                stored_file.file.save(file_name, file_obj, save=True)
-                return True, None
-            except Exception as e:
-                return False, f"{rel_path}: {str(e)}"
+                
+                stored_file.file.save(file_name, uploaded_file, save=True)
+                
+                uploaded_count += 1
+                
+            except ValidationError as e:
+                errors.append(f"{rel_path}: {str(e)}")
+            except IntegrityError:
+                errors.append(f"{rel_path}: Файл уже существует")
+            except Exception:
+                errors.append(f"{rel_path}: Ошибка загрузки")
         
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [
-                executor.submit(_upload_single_file, file_obj, rel_path)
-                for file_obj, rel_path in zip(files, relative_paths)
-            ]
-
-            for future in as_completed(futures):
-                success, error = future.result()
-                if success:
-                    uploaded_count += 1
-                else:
-                    errors.append(error)
-
         return uploaded_count, errors
     
     @staticmethod
